@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Suppression Inspector</title>
+    <title>Alert Suppression Inspector v2</title>
     <link rel="icon" href="NyanCat.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
     <style>
@@ -17,6 +17,9 @@
             color: #fff;
             padding: 20px;
             margin: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         main {
             padding: 20px;
@@ -25,20 +28,23 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             width: 90%;
-            max-width: 1000px;
+            max-width: 1200px;
         }
         .editor {
-            height: 300px;
+            height: 200px; /* Reduced height to fit both */
             margin-bottom: 20px;
+            border: 1px solid #ccc;
         }
         button {
             background-color: #2e06df;
             color: #fff;
-            padding: 10px 15px;
+            padding: 12px 20px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
         }
         button:hover {
             background-color: #45a049;
@@ -46,235 +52,393 @@
         h3 {
             padding: 8px 0;
             font-size: 18px;
+            margin-bottom: 5px;
         }
         p {
             margin: 5px 0;
             font-size: 16px;
             line-height: 1.4;
         }
-        .match, .mismatch {
-            padding: 8px;
+        
+        /* New Result Card Styles */
+        .result-card {
+            border: 1px solid #ddd;
             border-radius: 5px;
-            margin-bottom: 5px;
-        }
-        .match {
-            background-color: #f0fff0;
-            border-left: 4px solid #45a049;
-        }
-        .mismatch {
-            background-color: #fff0f0;
-            color: #d00;
-            border-left: 4px solid #d00;
-        }
-        .summary {
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-        .success {
-            background-color: #e6ffe6;
-            color: #008000;
-        }
-        .failure {
-            background-color: #ffe6e6;
-            color: #d00;
-        }
-        .tabs {
-            display: flex;
             margin-bottom: 10px;
+            overflow: hidden;
+            background: #fff;
         }
-        .tab {
+        .result-header {
             padding: 10px 15px;
             cursor: pointer;
-            border: 1px solid #ddd;
-            background-color: #f4f4f4;
-            border-radius: 4px 4px 0 0;
-            margin-right: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9f9f9;
         }
-        .tab.active {
-            background-color: #0515f0;
-            color: white;
-            border-bottom: none;
+        .result-header:hover {
+            background-color: #eee;
         }
+        .result-header.match-header {
+            border-left: 5px solid #008000;
+            background-color: #e6ffe6;
+        }
+        .result-header.mismatch-header {
+            border-left: 5px solid #d00;
+        }
+        .result-body {
+            padding: 15px;
+            display: none; /* Hidden by default */
+            border-top: 1px solid #eee;
+        }
+        .result-body.open {
+            display: block;
+        }
+
+        .match-detail, .mismatch-detail {
+            padding: 5px 10px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .match-detail {
+            background-color: #f0fff0;
+            color: #006400;
+        }
+        .mismatch-detail {
+            background-color: #fff0f0;
+            color: #d00;
+        }
+
+        /* Summary Box */
+        .summary-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .summary-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .summary-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .summary-info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
         .settings {
             margin: 10px 0;
-            padding: 10px;
+            padding: 15px;
             background-color: #f9f9f9;
             border: 1px solid #ddd;
             border-radius: 5px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
         }
-        .config-check {
-            margin-right: 15px;
+        
+        /* Filter Input */
+        #filterInput {
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: none; /* Hidden until results exist */
+        }
+
+        /* Loading Spinner */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #0515f0;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <h1>Alert Suppression Inspector</h1>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText" style="font-size: 18px; font-weight: bold;">Processing Manifest...</div>
+    </div>
+
+    <h1>Alert Suppression Inspector v2</h1>
     <main>
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('input')">Input Data</div>
-        </div>
-        
         <div id="inputTab">
-            <label for="alertEditor"><strong>Alert Data:</strong> (paste alert JSON or key-value format)</label>
+            <label for="alertEditor"><strong>1. Alert Data:</strong> (Paste Alert JSON or Key-Value text)</label>
             <div id="alertEditor" class="editor"></div>
 
-            <label for="ruleEditor"><strong>Suppression Rule:</strong> (paste rule JSON)</label>
+            <label for="ruleEditor"><strong>2. Suppression Rule OR Manifest:</strong> (Paste single Rule or Manifest JSON)</label>
             <div id="ruleEditor" class="editor"></div>
 
             <div class="settings">
                 <label class="config-check">
                     <input type="checkbox" id="strictCaseCheck" checked>
-                    <span>Strict case sensitivity (APPLES ≠ apples)</span>
+                    Strict case sensitivity (APPLES ≠ apples)
                 </label>
                 <label class="config-check">
                     <input type="checkbox" id="showDetailsCheck" checked>
-                    <span>Show detailed field comparisons</span>
+                    Show detailed field comparisons
                 </label>
             </div>
 
-            <button onclick="processData()">Validate Suppression</button>
+            <button onclick="startProcessing()">Validate Suppression</button>
         </div>
         
-        
-        
+        <hr style="margin: 20px 0;">
+
+        <input type="text" id="filterInput" placeholder="Filter results by Rule Name or ID..." onkeyup="filterResults()">
         <div id="summary"></div>
         <div id="results"></div>
     </main>
+
     <script>
-        // Initialize Ace editor for Alert Data
+        // --- 1. SETUP ---
         var alertEditor = ace.edit("alertEditor");
         alertEditor.setTheme("ace/theme/monokai");
         alertEditor.session.setMode("ace/mode/text");
         
-        // Initialize Ace editor for Suppression Rule
         var ruleEditor = ace.edit("ruleEditor");
         ruleEditor.setTheme("ace/theme/monokai");
         ruleEditor.session.setMode("ace/mode/json");
-        
-        // Field mappings for better display
+
+        // Global variable to store processed results for filtering
+        let globalResults = [];
+
         const fieldMappings = {
-            "ip": "IP Address",
-            "os": "Operating System",
-            "uid": "Process Owner UID",
-            "name": "Process Name",
-            "path": "File Path",
-            "sha1": "File SHA1",
-            "type": "Item Type",
-            "owner": "Process Owner",
-            "sha256": "File SHA256",
-            "eppType": "EPP Type",
-            "hostname": "Hostname",
-            "ruleName": "Rule Name",
-            "issuerName": "File Signature Issuer",
-            "sourceType": "Alert Type",
-            "avPositives": "AV Hits",
-            "commandLine": "Process Command Line",
-            "avThreatName": "AV Threat Name",
-            "ruleSeverity": "Severity",
-            "threatStatus": "Threat Status",
-            "targetGroupId": "Location Name",
-            "organizationId": "Organization Name",
-            "threatCategory": "Threat Category",
-            "parentProcessName": "Parent Process Name",
-            "grandParentProcessName": "Grand Parent Process Name",
+            "ip": "IP Address", "os": "Operating System", "uid": "Process Owner UID",
+            "name": "Process Name", "path": "File Path", "sha1": "File SHA1",
+            "type": "Item Type", "owner": "Process Owner", "sha256": "File SHA256",
+            "eppType": "EPP Type", "hostname": "Hostname", "ruleName": "Rule Name",
+            "issuerName": "File Signature Issuer", "sourceType": "Alert Type",
+            "avPositives": "AV Hits", "commandLine": "Process Command Line",
+            "avThreatName": "AV Threat Name", "ruleSeverity": "Severity",
+            "threatStatus": "Threat Status", "targetGroupId": "Location Name",
+            "organizationId": "Organization Name", "threatCategory": "Threat Category",
+            "parentProcessName": "Parent Process Name", "grandParentProcessName": "Grand Parent Process Name",
             "signature.issuerName": "File Signature Issuer"
         };
-        
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            
-            if (tabName === 'input') {
-                document.getElementById('inputTab').style.display = 'block';
-                document.getElementById('samplesTab').style.display = 'none';
-            } else {
-                document.getElementById('inputTab').style.display = 'none';
-                document.getElementById('samplesTab').style.display = 'block';
-            }
+
+        // --- 2. MAIN PROCESSING (Async for UI responsiveness) ---
+        function startProcessing() {
+            // Show Loader
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('summary').innerHTML = '';
+            document.getElementById('filterInput').style.display = 'none';
+
+            // Use setTimeout to allow the browser to render the loader before freezing for calculation
+            setTimeout(() => {
+                processData();
+            }, 100);
         }
-        
+
         function processData() {
-            const summaryDiv = document.getElementById('summary');
-            const resultsDiv = document.getElementById('results');
-            summaryDiv.innerHTML = '';
-            resultsDiv.innerHTML = '';
-            
-            // Get configuration options
-            const strictCase = document.getElementById('strictCaseCheck').checked;
-            const showDetails = document.getElementById('showDetailsCheck').checked;
-            
             try {
-                // Parse alert data (handle both JSON and key-value format)
+                // 1. Parse Alert Data
                 let alertData;
                 const alertText = alertEditor.getValue().trim();
-                
-                try {
-                    // Try parsing as JSON first
-                    alertData = JSON.parse(alertText);
-                } catch (e) {
-                    // If not valid JSON, try key-value format
-                    alertData = parseKeyValueFormat(alertText);
+                try { alertData = JSON.parse(alertText); } 
+                catch (e) { alertData = parseKeyValueFormat(alertText); }
+
+                // 2. Parse Rule/Manifest Data
+                let rawRuleInput;
+                const ruleText = ruleEditor.getValue().trim();
+                try { rawRuleInput = JSON.parse(ruleText); } 
+                catch (e) { throw new Error('Invalid JSON in Rule/Manifest box.'); }
+
+                // 3. Normalize to Array (Handle Manifest vs Single Rule)
+                let rulesArray = [];
+                // Case A: Input is the full Manifest object containing a "manifest" array (like new 3.txt)
+                if (rawRuleInput.manifest && Array.isArray(rawRuleInput.manifest)) {
+                    rulesArray = rawRuleInput.manifest;
                 }
-                
-                // Parse rule data (always JSON)
-                let ruleData;
-                try {
-                    const ruleText = ruleEditor.getValue().trim();
-                    // Check if the rule JSON starts with [ or {
-                    if (ruleText.startsWith('[')) {
-                        // If it's an array, take the first rule
-                        ruleData = JSON.parse(ruleText)[0];
-                    } else {
-                        ruleData = JSON.parse(ruleText);
-                    }
-                } catch (e) {
-                    throw new Error('Invalid Rule JSON: ' + e.message);
+                // Case B: Input is just an array of rules
+                else if (Array.isArray(rawRuleInput)) {
+                    rulesArray = rawRuleInput;
                 }
-                
-                // Find matches between alert and rule
-                const results = findMatches(alertData, ruleData, strictCase);
-                
-                // Display summary
-                displaySummary(results, ruleData.name);
-                
-                // Display detailed results if enabled
-                if (showDetails) {
-                    displayMatches(results);
+                // Case C: Input is a single rule object
+                else {
+                    rulesArray = [rawRuleInput];
                 }
-                
-                console.log("Alert Data:", alertData);
-                console.log("Rule Data:", ruleData);
-                console.log("Results:", results);
+
+                // 4. Configuration
+                const strictCase = document.getElementById('strictCaseCheck').checked;
+
+                // 5. Batch Analysis
+                globalResults = rulesArray.map(rule => {
+                    const comparison = findMatches(alertData, rule, strictCase);
+                    return {
+                        ruleName: rule.name || "(Unnamed Rule)",
+                        ruleId: rule.id || "N/A",
+                        isMatch: (comparison.totals.active > 0 && comparison.totals.active === comparison.totals.matched),
+                        details: comparison
+                    };
+                });
+
+                // 6. Render
+                renderResults(globalResults);
+
             } catch (e) {
-                summaryDiv.innerHTML = `<div class="summary failure">Error: ${e.message}</div>`;
+                document.getElementById('summary').innerHTML = `<div class="summary-box summary-warning">Error: ${e.message}</div>`;
+            } finally {
+                // Hide Loader
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
         }
-        
+
+        // --- 3. RENDERING & FILTERING ---
+        function renderResults(results) {
+            const container = document.getElementById('results');
+            container.innerHTML = '';
+
+            const matches = results.filter(r => r.isMatch);
+            const mismatches = results.filter(r => !r.isMatch);
+
+            // Update Summary
+            const summaryDiv = document.getElementById('summary');
+            if (matches.length > 0) {
+                summaryDiv.innerHTML = `<div class="summary-box summary-success">✅ SUPPRESSED: Found ${matches.length} matching rule(s) out of ${results.length} checked.</div>`;
+            } else {
+                summaryDiv.innerHTML = `<div class="summary-box summary-info">❌ ALERT: No suppression rules matched (checked ${results.length} rules).</div>`;
+            }
+
+            // Show Search Bar
+            document.getElementById('filterInput').style.display = 'block';
+
+            // Create HTML for Matches
+            if(matches.length > 0) {
+                const h3 = document.createElement('h3');
+                h3.textContent = `Matching Rules (${matches.length})`;
+                h3.style.color = 'green';
+                container.appendChild(h3);
+                matches.forEach(r => container.appendChild(createResultCard(r)));
+            }
+
+            // Create HTML for Mismatches
+            if(mismatches.length > 0) {
+                const h3 = document.createElement('h3');
+                h3.textContent = `Non-Matching Rules (${mismatches.length})`;
+                h3.style.color = '#555';
+                h3.style.marginTop = '20px';
+                container.appendChild(h3);
+                mismatches.forEach(r => container.appendChild(createResultCard(r)));
+            }
+        }
+
+        function createResultCard(result) {
+            const card = document.createElement('div');
+            card.className = 'result-card item-card'; // Add item-card class for filtering
+            
+            // Store data for filtering
+            card.dataset.search = (result.ruleName + " " + result.ruleId).toLowerCase();
+
+            const headerClass = result.isMatch ? 'match-header' : 'mismatch-header';
+            const icon = result.isMatch ? '✅' : '❌';
+            const statusText = result.isMatch ? 'MATCH' : 'NO MATCH';
+
+            // Calculate mismatch text for preview
+            let mismatchPreview = "";
+            if (!result.isMatch) {
+                const failedCount = result.details.mismatches.length;
+                mismatchPreview = `<span style="font-size:12px; color: #777; margin-left:10px;">(Failed on ${failedCount} fields)</span>`;
+            }
+
+            card.innerHTML = `
+                <div class="result-header ${headerClass}" onclick="toggleDetails(this)">
+                    <div>
+                        <strong>${icon} ${result.ruleName}</strong> <small style="color:#666">(${result.ruleId})</small>
+                        ${mismatchPreview}
+                    </div>
+                    <div style="font-size: 12px; color: #555;">▼ Details</div>
+                </div>
+                <div class="result-body">
+                    ${generateDetailsHTML(result.details)}
+                </div>
+            `;
+            return card;
+        }
+
+        function generateDetailsHTML(details) {
+            let html = '';
+            
+            // Show mismatches first
+            if (details.mismatches.length > 0) {
+                html += '<strong>Mismatches:</strong><br>';
+                details.mismatches.forEach(m => {
+                    const field = fieldMappings[m.field] || m.field;
+                    html += `<div class="mismatch-detail">
+                        <b>${field}:</b> ${m.reason} <br>
+                        <small>Rule wants: "${m.ruleValue}" (${m.operator}) | Alert has: "${m.alertValue}"</small>
+                    </div>`;
+                });
+            }
+
+            // Show matches
+            if (document.getElementById('showDetailsCheck').checked && details.matches.length > 0) {
+                html += '<div style="margin-top:10px;"><strong>Matches:</strong></div>';
+                details.matches.forEach(m => {
+                    const field = fieldMappings[m.field] || m.field;
+                    html += `<div class="match-detail">
+                        <b>${field}:</b> Matched value "${m.alertValue}"
+                    </div>`;
+                });
+            }
+            return html;
+        }
+
+        function toggleDetails(header) {
+            const body = header.nextElementSibling;
+            body.classList.toggle('open');
+        }
+
+        function filterResults() {
+            const query = document.getElementById('filterInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.item-card');
+            
+            cards.forEach(card => {
+                const text = card.dataset.search;
+                if (text.includes(query)) {
+                    card.style.display = "block";
+                } else {
+                    card.style.display = "none";
+                }
+            });
+        }
+
+        // --- 4. LOGIC HELPERS (Preserved from original) ---
+
         function parseKeyValueFormat(text) {
             const lines = text.split('\n');
             const data = {};
-            
             lines.forEach(line => {
                 line = line.trim();
                 if (!line) return;
-                
                 const colonIndex = line.indexOf(':');
                 if (colonIndex === -1) return;
-                
                 const key = line.substring(0, colonIndex).trim();
                 const value = line.substring(colonIndex + 1).trim();
-                
-                // Handle nested properties (e.g., signature.issuerName)
                 if (key.includes('.')) {
                     const parts = key.split('.');
                     let current = data;
                     for (let i = 0; i < parts.length - 1; i++) {
-                        if (!current[parts[i]]) {
-                            current[parts[i]] = {};
-                        }
+                        if (!current[parts[i]]) current[parts[i]] = {};
                         current = current[parts[i]];
                     }
                     current[parts[parts.length - 1]] = value;
@@ -282,106 +446,67 @@
                     data[key] = value;
                 }
             });
-            
             return data;
         }
-        
+
         function findMatches(alertData, ruleData, strictCase) {
-            let results = {
-                matches: [],
-                mismatches: [],
-                totals: {
-                    active: 0,
-                    matched: 0
-                }
-            };
-            
+            let results = { matches: [], mismatches: [], totals: { active: 0, matched: 0 } };
             const metadata = ruleData.metadata || {};
-            
-            // Process regular fields
+
             for (const key in metadata) {
-                if (key === 'signature') continue; // Skip signature, handle it specially below
-                
+                if (key === 'signature') continue; 
                 const metadataItem = metadata[key];
+                
                 if (metadataItem.active) {
                     results.totals.active++;
-                    
                     const alertValue = getAlertValue(alertData, key);
                     const ruleValue = metadataItem.value;
                     const operator = metadataItem.operator || '==';
                     const dataType = metadataItem.dataType || 'string';
-                    
-                    // Handle empty or missing values
+
+                    // Check for empty alert value
                     if (alertValue === undefined || alertValue === null || alertValue === '') {
-                        results.mismatches.push({
+                         results.mismatches.push({
                             field: key,
-                            reason: `Missing or empty value for ${fieldMappings[key] || key}`,
-                            alertValue: alertValue === '' ? '(empty string)' : '(no value)',
-                            ruleValue
+                            reason: `Alert missing value`,
+                            alertValue: '(empty)', ruleValue, operator
                         });
                         continue;
                     }
-                    
-                    // Compare values
+
                     if (compareValues(alertValue, ruleValue, operator, dataType, strictCase)) {
-                        results.matches.push({
-                            field: key,
-                            alertValue,
-                            ruleValue,
-                            operator
-                        });
+                        results.matches.push({ field: key, alertValue, ruleValue, operator });
                         results.totals.matched++;
                     } else {
                         results.mismatches.push({
                             field: key,
-                            reason: `Value mismatch for ${fieldMappings[key] || key}`,
-                            alertValue,
-                            ruleValue,
-                            operator
+                            reason: `Value mismatch`,
+                            alertValue, ruleValue, operator
                         });
                     }
                 }
             }
-            
-            // Handle signature separately (it's nested)
+
+            // Handle nested Signature
             if (metadata.signature && metadata.signature.issuerName && metadata.signature.issuerName.active) {
                 results.totals.active++;
-                
                 const alertValue = alertData.signature?.issuerName;
                 const ruleValue = metadata.signature.issuerName.value;
                 const operator = metadata.signature.issuerName.operator || '==';
-                
-                if (alertValue === undefined || alertValue === null || alertValue === '') {
-                    results.mismatches.push({
-                        field: 'signature.issuerName',
-                        reason: 'Missing or empty value for File Signature Issuer',
-                        alertValue: alertValue === '' ? '(empty string)' : '(no value)',
-                        ruleValue
-                    });
+
+                if (!alertValue) {
+                    results.mismatches.push({ field: 'signature.issuerName', reason: 'Alert missing signature', alertValue: '(empty)', ruleValue });
                 } else if (compareValues(alertValue, ruleValue, operator, 'string', strictCase)) {
-                    results.matches.push({
-                        field: 'signature.issuerName',
-                        alertValue,
-                        ruleValue,
-                        operator
-                    });
+                    results.matches.push({ field: 'signature.issuerName', alertValue, ruleValue, operator });
                     results.totals.matched++;
                 } else {
-                    results.mismatches.push({
-                        field: 'signature.issuerName',
-                        reason: 'Value mismatch for File Signature Issuer',
-                        alertValue,
-                        ruleValue,
-                        operator
-                    });
+                    results.mismatches.push({ field: 'signature.issuerName', reason: 'Value mismatch', alertValue, ruleValue, operator });
                 }
             }
-            
             return results;
         }
-        
+
         function getAlertValue(alertData, key) {
-            // Handle special cases and nested properties
             if (key.includes('.')) {
                 const parts = key.split('.');
                 let value = alertData;
@@ -391,136 +516,38 @@
                 }
                 return value;
             }
-            
             return alertData[key];
         }
-        
+
         function compareValues(alertValue, ruleValue, operator, dataType, strictCase) {
-            // Convert to appropriate type
             if (dataType === 'number') {
                 alertValue = parseFloat(alertValue);
                 ruleValue = parseFloat(ruleValue);
-                if (isNaN(alertValue) || isNaN(ruleValue)) {
-                    return false;
-                }
+                if (isNaN(alertValue) || isNaN(ruleValue)) return false;
             } else {
-                // For string comparison
                 alertValue = String(alertValue);
                 ruleValue = String(ruleValue);
-                
-                // For wildcards or case-insensitive comparison, convert to lowercase
                 if (!strictCase || ruleValue.includes('*')) {
                     alertValue = alertValue.toLowerCase();
                     ruleValue = ruleValue.toLowerCase();
                 }
             }
-            
-            // Check for wildcards
+
             if (typeof ruleValue === 'string' && ruleValue.includes('*')) {
-                const escapedRuleValue = ruleValue
-                    .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
-                    .replace(/\*/g, '.*'); // Replace * with .*
-                
+                const escapedRuleValue = ruleValue.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
                 const regexFlags = strictCase ? '' : 'i';
                 const regex = new RegExp(`^${escapedRuleValue}$`, regexFlags);
                 return regex.test(alertValue);
             }
-            
-            // Normal comparison
+
             switch (operator) {
-                case '=':
-                case '==':
-                    return alertValue == ruleValue;
-                case '<':
-                    return alertValue < ruleValue;
-                case '>':
-                    return alertValue > ruleValue;
-                case '<=':
-                    return alertValue <= ruleValue;
-                case '>=':
-                    return alertValue >= ruleValue;
-                case '!=':
-                    return alertValue != ruleValue;
-                default:
-                    return false;
-            }
-        }
-        
-        function displaySummary(results, ruleName) {
-            const summaryDiv = document.getElementById('summary');
-            const { active, matched } = results.totals;
-            
-            if (matched === active) {
-                summaryDiv.innerHTML = `
-                    <div class="summary success">
-                        ✅ Success: All ${active} active rule conditions matched! Alert would be suppressed by rule "${ruleName}".
-                    </div>
-                `;
-            } else {
-                summaryDiv.innerHTML = `
-                    <div class="summary failure">
-                        ❌ Failure: Only ${matched} of ${active} active rule conditions matched. Alert would NOT be suppressed by rule "${ruleName}".
-                    </div>
-                `;
-            }
-        }
-        
-        function displayMatches(results) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '';
-            
-            // Display mismatches first (they're more important)
-            if (results.mismatches.length > 0) {
-                const mismatchHeader = document.createElement('h3');
-                mismatchHeader.textContent = "Mismatched Conditions:";
-                mismatchHeader.style.color = '#d00';
-                resultsDiv.appendChild(mismatchHeader);
-                
-                results.mismatches.forEach(mismatch => {
-                    const mismatchDiv = document.createElement('div');
-                    mismatchDiv.className = 'mismatch';
-                    
-                    const fieldName = fieldMappings[mismatch.field] || mismatch.field;
-                    const operatorDisplay = mismatch.operator || '==';
-                    
-                    mismatchDiv.innerHTML = `
-                        <strong>${fieldName}</strong>: ${mismatch.reason}<br>
-                        <span style="font-size: 14px">
-                            Expected "${mismatch.ruleValue}" ${operatorDisplay} Found "${mismatch.alertValue}"
-                        </span>
-                    `;
-                    
-                    resultsDiv.appendChild(mismatchDiv);
-                });
-            }
-            
-            // Display matches
-            if (results.matches.length > 0) {
-                const matchHeader = document.createElement('h3');
-                matchHeader.textContent = "Matched Conditions:";
-                matchHeader.style.color = '#008000';
-                resultsDiv.appendChild(matchHeader);
-                
-                results.matches.forEach(match => {
-                    const matchDiv = document.createElement('div');
-                    matchDiv.className = 'match';
-                    
-                    const fieldName = fieldMappings[match.field] || match.field;
-                    const operatorDisplay = match.operator || '==';
-                    
-                    matchDiv.innerHTML = `
-                        <strong>${fieldName}</strong>: Match found<br>
-                        <span style="font-size: 14px">
-                            Rule value "${match.ruleValue}" ${operatorDisplay} Alert value "${match.alertValue}"
-                        </span>
-                    `;
-                    
-                    resultsDiv.appendChild(matchDiv);
-                });
-            }
-            
-            if (results.matches.length === 0 && results.mismatches.length === 0) {
-                resultsDiv.textContent = 'No active rule conditions to evaluate.';
+                case '=': case '==': return alertValue == ruleValue;
+                case '<': return alertValue < ruleValue;
+                case '>': return alertValue > ruleValue;
+                case '<=': return alertValue <= ruleValue;
+                case '>=': return alertValue >= ruleValue;
+                case '!=': return alertValue != ruleValue;
+                default: return false;
             }
         }
     </script>
