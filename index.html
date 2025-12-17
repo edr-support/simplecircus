@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Suppression Inspector v2</title>
+    <title>Alert Suppression Inspector v3 (Manifest Support)</title>
     <link rel="icon" href="NyanCat.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
     <style>
@@ -27,131 +27,43 @@
             background-color: #fff;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
-            width: 90%;
-            max-width: 1200px;
+            width: 95%;
+            max-width: 1400px;
+        }
+        .editor-container {
+            display: flex;
+            gap: 20px;
+        }
+        .editor-box {
+            flex: 1;
         }
         .editor {
-            height: 200px; /* Reduced height to fit both */
-            margin-bottom: 20px;
+            height: 250px;
             border: 1px solid #ccc;
+            border-radius: 4px;
         }
         button {
             background-color: #2e06df;
             color: #fff;
-            padding: 12px 20px;
+            padding: 12px 25px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 15px;
             font-size: 16px;
             font-weight: bold;
+            transition: background 0.3s;
         }
         button:hover {
             background-color: #45a049;
         }
-        h3 {
-            padding: 8px 0;
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        p {
-            margin: 5px 0;
-            font-size: 16px;
-            line-height: 1.4;
-        }
         
-        /* New Result Card Styles */
-        .result-card {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            overflow: hidden;
-            background: #fff;
-        }
-        .result-header {
-            padding: 10px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f9f9f9;
-        }
-        .result-header:hover {
-            background-color: #eee;
-        }
-        .result-header.match-header {
-            border-left: 5px solid #008000;
-            background-color: #e6ffe6;
-        }
-        .result-header.mismatch-header {
-            border-left: 5px solid #d00;
-        }
-        .result-body {
-            padding: 15px;
-            display: none; /* Hidden by default */
-            border-top: 1px solid #eee;
-        }
-        .result-body.open {
-            display: block;
-        }
-
-        .match-detail, .mismatch-detail {
-            padding: 5px 10px;
-            margin-bottom: 4px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .match-detail {
-            background-color: #f0fff0;
-            color: #006400;
-        }
-        .mismatch-detail {
-            background-color: #fff0f0;
-            color: #d00;
-        }
-
-        /* Summary Box */
-        .summary-box {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .summary-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .summary-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .summary-info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-
-        .settings {
-            margin: 10px 0;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        
-        /* Filter Input */
-        #filterInput {
-            padding: 10px;
-            width: 100%;
-            max-width: 400px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 16px;
-            display: none; /* Hidden until results exist */
-        }
-
-        /* Loading Spinner */
+        /* Loading Overlay */
         #loadingOverlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.9);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -166,390 +78,400 @@
             animation: spin 1s linear infinite;
             margin-bottom: 15px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Results Styling */
+        .summary-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
         }
+        .summary-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .summary-fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        #filterInput {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        .result-section { margin-top: 20px; }
+        .result-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .result-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            user-select: none;
+        }
+        .result-header:hover { background: #eee; }
+        .match-card { border-left: 5px solid #28a745; }
+        .match-card .result-header { background: #e6ffe6; }
+        .mismatch-card { border-left: 5px solid #dc3545; }
+        
+        .result-body {
+            padding: 15px;
+            display: none;
+            border-top: 1px solid #eee;
+        }
+        .result-body.open { display: block; }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .badge-match { background: #d4edda; color: #155724; }
+        .badge-fail { background: #f8d7da; color: #721c24; }
+
+        .settings {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        label { cursor: pointer; margin-right: 15px; }
     </style>
 </head>
 <body>
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-        <div id="loadingText" style="font-size: 18px; font-weight: bold;">Processing Manifest...</div>
+
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div id="loadingText" style="font-size: 18px; font-weight: bold; color: #333;">Processing Manifest...</div>
+</div>
+
+<h1>Alert Suppression Inspector v3</h1>
+
+<main>
+    <div class="editor-container">
+        <div class="editor-box">
+            <label><strong>1. Alert Data:</strong> (JSON or Key-Value)</label>
+            <div id="alertEditor" class="editor"></div>
+        </div>
+        <div class="editor-box">
+            <label><strong>2. Suppression Rules / Manifest:</strong> (Paste Array or Object)</label>
+            <div id="ruleEditor" class="editor"></div>
+        </div>
     </div>
 
-    <h1>Alert Suppression Inspector v2</h1>
-    <main>
-        <div id="inputTab">
-            <label for="alertEditor"><strong>1. Alert Data:</strong> (Paste Alert JSON or Key-Value text)</label>
-            <div id="alertEditor" class="editor"></div>
+    <div class="settings">
+        <label><input type="checkbox" id="strictCaseCheck" checked> Strict Case Sensitivity</label>
+        <label><input type="checkbox" id="showDetailsCheck" checked> Show Field Details</label>
+    </div>
 
-            <label for="ruleEditor"><strong>2. Suppression Rule OR Manifest:</strong> (Paste single Rule or Manifest JSON)</label>
-            <div id="ruleEditor" class="editor"></div>
+    <button onclick="startProcessing()">Validate Against Manifest</button>
 
-            <div class="settings">
-                <label class="config-check">
-                    <input type="checkbox" id="strictCaseCheck" checked>
-                    Strict case sensitivity (APPLES ≠ apples)
-                </label>
-                <label class="config-check">
-                    <input type="checkbox" id="showDetailsCheck" checked>
-                    Show detailed field comparisons
-                </label>
-            </div>
+    <hr>
 
-            <button onclick="startProcessing()">Validate Suppression</button>
-        </div>
-        
-        <hr style="margin: 20px 0;">
+    <input type="text" id="filterInput" placeholder="🔍 Filter results by Rule Name, ID, or Status..." onkeyup="filterResults()">
+    <div id="summary"></div>
+    <div id="results"></div>
+</main>
 
-        <input type="text" id="filterInput" placeholder="Filter results by Rule Name or ID..." onkeyup="filterResults()">
-        <div id="summary"></div>
-        <div id="results"></div>
-    </main>
+<script>
+    // --- 1. SETUP EDITORS ---
+    const alertEditor = ace.edit("alertEditor");
+    alertEditor.setTheme("ace/theme/monokai");
+    alertEditor.session.setMode("ace/mode/text");
 
-    <script>
-        // --- 1. SETUP ---
-        var alertEditor = ace.edit("alertEditor");
-        alertEditor.setTheme("ace/theme/monokai");
-        alertEditor.session.setMode("ace/mode/text");
-        
-        var ruleEditor = ace.edit("ruleEditor");
-        ruleEditor.setTheme("ace/theme/monokai");
-        ruleEditor.session.setMode("ace/mode/json");
+    const ruleEditor = ace.edit("ruleEditor");
+    ruleEditor.setTheme("ace/theme/monokai");
+    ruleEditor.session.setMode("ace/mode/json");
 
-        // Global variable to store processed results for filtering
-        let globalResults = [];
+    // Human readable field names
+    const fieldMappings = {
+        "ip": "IP Address", "os": "Operating System", "uid": "Process Owner UID",
+        "name": "Process Name", "path": "File Path", "sha1": "File SHA1",
+        "type": "Item Type", "owner": "Process Owner", "sha256": "File SHA256",
+        "eppType": "EPP Type", "hostname": "Hostname", "ruleName": "Rule Name",
+        "issuerName": "File Signature Issuer", "sourceType": "Alert Type",
+        "avPositives": "AV Hits", "commandLine": "Process Command Line",
+        "avThreatName": "AV Threat Name", "ruleSeverity": "Severity",
+        "threatStatus": "Threat Status", "targetGroupId": "Location Name",
+        "organizationId": "Organization Name", "threatCategory": "Threat Category",
+        "parentProcessName": "Parent Process Name", "signature.issuerName": "File Signature Issuer"
+    };
 
-        const fieldMappings = {
-            "ip": "IP Address", "os": "Operating System", "uid": "Process Owner UID",
-            "name": "Process Name", "path": "File Path", "sha1": "File SHA1",
-            "type": "Item Type", "owner": "Process Owner", "sha256": "File SHA256",
-            "eppType": "EPP Type", "hostname": "Hostname", "ruleName": "Rule Name",
-            "issuerName": "File Signature Issuer", "sourceType": "Alert Type",
-            "avPositives": "AV Hits", "commandLine": "Process Command Line",
-            "avThreatName": "AV Threat Name", "ruleSeverity": "Severity",
-            "threatStatus": "Threat Status", "targetGroupId": "Location Name",
-            "organizationId": "Organization Name", "threatCategory": "Threat Category",
-            "parentProcessName": "Parent Process Name", "grandParentProcessName": "Grand Parent Process Name",
-            "signature.issuerName": "File Signature Issuer"
-        };
+    let globalResults = [];
 
-        // --- 2. MAIN PROCESSING (Async for UI responsiveness) ---
-        function startProcessing() {
-            // Show Loader
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('results').innerHTML = '';
-            document.getElementById('summary').innerHTML = '';
-            document.getElementById('filterInput').style.display = 'none';
+    // --- 2. PROCESSING LOGIC ---
+    function startProcessing() {
+        // Show loader
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('summary').innerHTML = '';
+        document.getElementById('filterInput').style.display = 'none';
 
-            // Use setTimeout to allow the browser to render the loader before freezing for calculation
-            setTimeout(() => {
-                processData();
-            }, 100);
-        }
-
-        function processData() {
+        // Brief timeout to let UI render the spinner before heavy JS starts
+        setTimeout(() => {
             try {
-                // 1. Parse Alert Data
-                let alertData;
-                const alertText = alertEditor.getValue().trim();
-                try { alertData = JSON.parse(alertText); } 
-                catch (e) { alertData = parseKeyValueFormat(alertText); }
-
-                // 2. Parse Rule/Manifest Data
-                let rawRuleInput;
-                const ruleText = ruleEditor.getValue().trim();
-                try { rawRuleInput = JSON.parse(ruleText); } 
-                catch (e) { throw new Error('Invalid JSON in Rule/Manifest box.'); }
-
-                // 3. Normalize to Array (Handle Manifest vs Single Rule)
-                let rulesArray = [];
-                // Case A: Input is the full Manifest object containing a "manifest" array (like new 3.txt)
-                if (rawRuleInput.manifest && Array.isArray(rawRuleInput.manifest)) {
-                    rulesArray = rawRuleInput.manifest;
-                }
-                // Case B: Input is just an array of rules
-                else if (Array.isArray(rawRuleInput)) {
-                    rulesArray = rawRuleInput;
-                }
-                // Case C: Input is a single rule object
-                else {
-                    rulesArray = [rawRuleInput];
-                }
-
-                // 4. Configuration
-                const strictCase = document.getElementById('strictCaseCheck').checked;
-
-                // 5. Batch Analysis
-                globalResults = rulesArray.map(rule => {
-                    const comparison = findMatches(alertData, rule, strictCase);
-                    return {
-                        ruleName: rule.name || "(Unnamed Rule)",
-                        ruleId: rule.id || "N/A",
-                        isMatch: (comparison.totals.active > 0 && comparison.totals.active === comparison.totals.matched),
-                        details: comparison
-                    };
-                });
-
-                // 6. Render
-                renderResults(globalResults);
-
+                executeComparison();
             } catch (e) {
-                document.getElementById('summary').innerHTML = `<div class="summary-box summary-warning">Error: ${e.message}</div>`;
+                document.getElementById('summary').innerHTML = `<div class="summary-box summary-fail">Error: ${e.message}</div>`;
             } finally {
-                // Hide Loader
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
-        }
+        }, 100);
+    }
 
-        // --- 3. RENDERING & FILTERING ---
-        function renderResults(results) {
-            const container = document.getElementById('results');
-            container.innerHTML = '';
+    function executeComparison() {
+        // 1. Parse Alert
+        let alertData;
+        const alertText = alertEditor.getValue().trim();
+        try { alertData = JSON.parse(alertText); } 
+        catch (e) { alertData = parseKeyValueFormat(alertText); }
 
-            const matches = results.filter(r => r.isMatch);
-            const mismatches = results.filter(r => !r.isMatch);
+        // 2. Parse Rules (Smart Detection)
+        const ruleText = ruleEditor.getValue().trim();
+        if(!ruleText) throw new Error("Please paste suppression rules.");
+        
+        let rawRules;
+        try { rawRules = JSON.parse(ruleText); }
+        catch(e) { throw new Error("Invalid JSON in Rule/Manifest box."); }
 
-            // Update Summary
-            const summaryDiv = document.getElementById('summary');
-            if (matches.length > 0) {
-                summaryDiv.innerHTML = `<div class="summary-box summary-success">✅ SUPPRESSED: Found ${matches.length} matching rule(s) out of ${results.length} checked.</div>`;
-            } else {
-                summaryDiv.innerHTML = `<div class="summary-box summary-info">❌ ALERT: No suppression rules matched (checked ${results.length} rules).</div>`;
+        // Extract array from the JSON regardless of format
+        const rulesArray = extractRulesArray(rawRules);
+        
+        if (rulesArray.length === 0) throw new Error("No suppression rules found in the provided JSON.");
+
+        // 3. Compare All
+        const strictCase = document.getElementById('strictCaseCheck').checked;
+        
+        globalResults = rulesArray.map(rule => {
+            const result = compareRule(alertData, rule, strictCase);
+            return {
+                meta: rule,
+                result: result,
+                isMatch: (result.totals.active > 0 && result.totals.active === result.totals.matched)
+            };
+        });
+
+        renderResults();
+    }
+
+    // Helper: Finds the array inside the JSON object
+    function extractRulesArray(input) {
+        // Case A: It's already an array
+        if (Array.isArray(input)) return input;
+
+        // Case B: It's an object, let's look for the array
+        if (typeof input === 'object' && input !== null) {
+            // Check common keys first
+            if (Array.isArray(input.manifest)) return input.manifest;
+            if (Array.isArray(input.rules)) return input.rules;
+            if (Array.isArray(input.items)) return input.items;
+
+            // Fallback: Just grab the first array we find in the object keys
+            const keys = Object.keys(input);
+            for (let k of keys) {
+                if (Array.isArray(input[k])) return input[k];
             }
-
-            // Show Search Bar
-            document.getElementById('filterInput').style.display = 'block';
-
-            // Create HTML for Matches
-            if(matches.length > 0) {
-                const h3 = document.createElement('h3');
-                h3.textContent = `Matching Rules (${matches.length})`;
-                h3.style.color = 'green';
-                container.appendChild(h3);
-                matches.forEach(r => container.appendChild(createResultCard(r)));
-            }
-
-            // Create HTML for Mismatches
-            if(mismatches.length > 0) {
-                const h3 = document.createElement('h3');
-                h3.textContent = `Non-Matching Rules (${mismatches.length})`;
-                h3.style.color = '#555';
-                h3.style.marginTop = '20px';
-                container.appendChild(h3);
-                mismatches.forEach(r => container.appendChild(createResultCard(r)));
-            }
-        }
-
-        function createResultCard(result) {
-            const card = document.createElement('div');
-            card.className = 'result-card item-card'; // Add item-card class for filtering
             
-            // Store data for filtering
-            card.dataset.search = (result.ruleName + " " + result.ruleId).toLowerCase();
-
-            const headerClass = result.isMatch ? 'match-header' : 'mismatch-header';
-            const icon = result.isMatch ? '✅' : '❌';
-            const statusText = result.isMatch ? 'MATCH' : 'NO MATCH';
-
-            // Calculate mismatch text for preview
-            let mismatchPreview = "";
-            if (!result.isMatch) {
-                const failedCount = result.details.mismatches.length;
-                mismatchPreview = `<span style="font-size:12px; color: #777; margin-left:10px;">(Failed on ${failedCount} fields)</span>`;
-            }
-
-            card.innerHTML = `
-                <div class="result-header ${headerClass}" onclick="toggleDetails(this)">
-                    <div>
-                        <strong>${icon} ${result.ruleName}</strong> <small style="color:#666">(${result.ruleId})</small>
-                        ${mismatchPreview}
-                    </div>
-                    <div style="font-size: 12px; color: #555;">▼ Details</div>
-                </div>
-                <div class="result-body">
-                    ${generateDetailsHTML(result.details)}
-                </div>
-            `;
-            return card;
+            // Case C: It's a single rule object
+            if (input.metadata || input.id) return [input];
         }
+        return [];
+    }
 
-        function generateDetailsHTML(details) {
-            let html = '';
+    function compareRule(alertData, ruleData, strictCase) {
+        let results = { matches: [], mismatches: [], totals: { active: 0, matched: 0 } };
+        const metadata = ruleData.metadata || {};
+
+        for (const key in metadata) {
+            if (key === 'signature') continue; // Handle separately
+            const ruleItem = metadata[key];
             
-            // Show mismatches first
-            if (details.mismatches.length > 0) {
-                html += '<strong>Mismatches:</strong><br>';
-                details.mismatches.forEach(m => {
-                    const field = fieldMappings[m.field] || m.field;
-                    html += `<div class="mismatch-detail">
-                        <b>${field}:</b> ${m.reason} <br>
-                        <small>Rule wants: "${m.ruleValue}" (${m.operator}) | Alert has: "${m.alertValue}"</small>
-                    </div>`;
-                });
-            }
-
-            // Show matches
-            if (document.getElementById('showDetailsCheck').checked && details.matches.length > 0) {
-                html += '<div style="margin-top:10px;"><strong>Matches:</strong></div>';
-                details.matches.forEach(m => {
-                    const field = fieldMappings[m.field] || m.field;
-                    html += `<div class="match-detail">
-                        <b>${field}:</b> Matched value "${m.alertValue}"
-                    </div>`;
-                });
-            }
-            return html;
-        }
-
-        function toggleDetails(header) {
-            const body = header.nextElementSibling;
-            body.classList.toggle('open');
-        }
-
-        function filterResults() {
-            const query = document.getElementById('filterInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.item-card');
-            
-            cards.forEach(card => {
-                const text = card.dataset.search;
-                if (text.includes(query)) {
-                    card.style.display = "block";
-                } else {
-                    card.style.display = "none";
-                }
-            });
-        }
-
-        // --- 4. LOGIC HELPERS (Preserved from original) ---
-
-        function parseKeyValueFormat(text) {
-            const lines = text.split('\n');
-            const data = {};
-            lines.forEach(line => {
-                line = line.trim();
-                if (!line) return;
-                const colonIndex = line.indexOf(':');
-                if (colonIndex === -1) return;
-                const key = line.substring(0, colonIndex).trim();
-                const value = line.substring(colonIndex + 1).trim();
-                if (key.includes('.')) {
-                    const parts = key.split('.');
-                    let current = data;
-                    for (let i = 0; i < parts.length - 1; i++) {
-                        if (!current[parts[i]]) current[parts[i]] = {};
-                        current = current[parts[i]];
-                    }
-                    current[parts[parts.length - 1]] = value;
-                } else {
-                    data[key] = value;
-                }
-            });
-            return data;
-        }
-
-        function findMatches(alertData, ruleData, strictCase) {
-            let results = { matches: [], mismatches: [], totals: { active: 0, matched: 0 } };
-            const metadata = ruleData.metadata || {};
-
-            for (const key in metadata) {
-                if (key === 'signature') continue; 
-                const metadataItem = metadata[key];
-                
-                if (metadataItem.active) {
-                    results.totals.active++;
-                    const alertValue = getAlertValue(alertData, key);
-                    const ruleValue = metadataItem.value;
-                    const operator = metadataItem.operator || '==';
-                    const dataType = metadataItem.dataType || 'string';
-
-                    // Check for empty alert value
-                    if (alertValue === undefined || alertValue === null || alertValue === '') {
-                         results.mismatches.push({
-                            field: key,
-                            reason: `Alert missing value`,
-                            alertValue: '(empty)', ruleValue, operator
-                        });
-                        continue;
-                    }
-
-                    if (compareValues(alertValue, ruleValue, operator, dataType, strictCase)) {
-                        results.matches.push({ field: key, alertValue, ruleValue, operator });
-                        results.totals.matched++;
-                    } else {
-                        results.mismatches.push({
-                            field: key,
-                            reason: `Value mismatch`,
-                            alertValue, ruleValue, operator
-                        });
-                    }
-                }
-            }
-
-            // Handle nested Signature
-            if (metadata.signature && metadata.signature.issuerName && metadata.signature.issuerName.active) {
+            if (ruleItem.active) {
                 results.totals.active++;
-                const alertValue = alertData.signature?.issuerName;
-                const ruleValue = metadata.signature.issuerName.value;
-                const operator = metadata.signature.issuerName.operator || '==';
+                const alertVal = getNestedValue(alertData, key);
+                const ruleVal = ruleItem.value;
+                const op = ruleItem.operator || '==';
+                const type = ruleItem.dataType || 'string';
 
-                if (!alertValue) {
-                    results.mismatches.push({ field: 'signature.issuerName', reason: 'Alert missing signature', alertValue: '(empty)', ruleValue });
-                } else if (compareValues(alertValue, ruleValue, operator, 'string', strictCase)) {
-                    results.matches.push({ field: 'signature.issuerName', alertValue, ruleValue, operator });
+                if (checkMatch(alertVal, ruleVal, op, type, strictCase)) {
+                    results.matches.push({ field: key, alertVal, ruleVal, op });
                     results.totals.matched++;
                 } else {
-                    results.mismatches.push({ field: 'signature.issuerName', reason: 'Value mismatch', alertValue, ruleValue, operator });
+                    results.mismatches.push({ field: key, alertVal, ruleVal, op });
                 }
             }
-            return results;
         }
 
-        function getAlertValue(alertData, key) {
-            if (key.includes('.')) {
-                const parts = key.split('.');
-                let value = alertData;
-                for (const part of parts) {
-                    if (!value || value[part] === undefined) return undefined;
-                    value = value[part];
-                }
-                return value;
-            }
-            return alertData[key];
-        }
+        // Handle Signature separately
+        if (metadata.signature && metadata.signature.issuerName && metadata.signature.issuerName.active) {
+            results.totals.active++;
+            const alertVal = getNestedValue(alertData, 'signature.issuerName');
+            const ruleVal = metadata.signature.issuerName.value;
+            const op = metadata.signature.issuerName.operator || '==';
 
-        function compareValues(alertValue, ruleValue, operator, dataType, strictCase) {
-            if (dataType === 'number') {
-                alertValue = parseFloat(alertValue);
-                ruleValue = parseFloat(ruleValue);
-                if (isNaN(alertValue) || isNaN(ruleValue)) return false;
+            if (checkMatch(alertVal, ruleVal, op, 'string', strictCase)) {
+                results.matches.push({ field: 'signature.issuerName', alertVal, ruleVal, op });
+                results.totals.matched++;
             } else {
-                alertValue = String(alertValue);
-                ruleValue = String(ruleValue);
-                if (!strictCase || ruleValue.includes('*')) {
-                    alertValue = alertValue.toLowerCase();
-                    ruleValue = ruleValue.toLowerCase();
-                }
-            }
-
-            if (typeof ruleValue === 'string' && ruleValue.includes('*')) {
-                const escapedRuleValue = ruleValue.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-                const regexFlags = strictCase ? '' : 'i';
-                const regex = new RegExp(`^${escapedRuleValue}$`, regexFlags);
-                return regex.test(alertValue);
-            }
-
-            switch (operator) {
-                case '=': case '==': return alertValue == ruleValue;
-                case '<': return alertValue < ruleValue;
-                case '>': return alertValue > ruleValue;
-                case '<=': return alertValue <= ruleValue;
-                case '>=': return alertValue >= ruleValue;
-                case '!=': return alertValue != ruleValue;
-                default: return false;
+                results.mismatches.push({ field: 'signature.issuerName', alertVal, ruleVal, op });
             }
         }
-    </script>
+        return results;
+    }
+
+    function checkMatch(alertVal, ruleVal, op, type, strictCase) {
+        // Handle undefined/null
+        if (alertVal === undefined || alertVal === null) return false;
+
+        // Number comparison
+        if (type === 'number') {
+            const a = parseFloat(alertVal);
+            const r = parseFloat(ruleVal);
+            if (isNaN(a) || isNaN(r)) return false;
+            if (op === '<') return a < r;
+            if (op === '>') return a > r;
+            return a == r;
+        }
+
+        // String comparison
+        let aStr = String(alertVal);
+        let rStr = String(ruleVal);
+
+        if (!strictCase) {
+            aStr = aStr.toLowerCase();
+            rStr = rStr.toLowerCase();
+        }
+
+        // Wildcard support
+        if (rStr.includes('*')) {
+            const regexStr = '^' + rStr.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$';
+            return new RegExp(regexStr, strictCase ? '' : 'i').test(aStr);
+        }
+
+        return op === '!=' ? aStr !== rStr : aStr === rStr;
+    }
+
+    function getNestedValue(obj, path) {
+        if (!path) return undefined;
+        return path.split('.').reduce((o, i) => (o ? o[i] : undefined), obj);
+    }
+
+    // --- 3. RENDERING ---
+    function renderResults() {
+        const container = document.getElementById('results');
+        const summary = document.getElementById('summary');
+        const filter = document.getElementById('filterInput');
+        
+        const matches = globalResults.filter(r => r.isMatch);
+        const total = globalResults.length;
+
+        if (matches.length > 0) {
+            summary.innerHTML = `<div class="summary-box summary-success">✅ SUCCESS: Alert suppressed by ${matches.length} rule(s) (out of ${total} checked).</div>`;
+        } else {
+            summary.innerHTML = `<div class="summary-box summary-fail">❌ ALERT TRIGGERED: No suppression rules matched (out of ${total} checked).</div>`;
+        }
+
+        filter.style.display = 'block';
+
+        // Sort: Matches first
+        globalResults.sort((a, b) => (a.isMatch === b.isMatch) ? 0 : a.isMatch ? -1 : 1);
+
+        globalResults.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `result-card ${item.isMatch ? 'match-card' : 'mismatch-card'}`;
+            div.setAttribute('data-search', `${item.meta.name} ${item.meta.id}`.toLowerCase());
+            
+            const icon = item.isMatch ? '✅' : '❌';
+            const failCount = item.result.mismatches.length;
+            const subtitle = item.isMatch 
+                ? '<span style="color:green">Active & Matched</span>' 
+                : `<span style="color:red">Failed on ${failCount} condition(s)</span>`;
+
+            div.innerHTML = `
+                <div class="result-header" onclick="this.nextElementSibling.classList.toggle('open')">
+                    <div>
+                        <strong>${icon} ${item.meta.name || 'Unnamed Rule'}</strong> 
+                        <span style="color:#777; font-size:12px">(${item.meta.id})</span>
+                        <br><small>${subtitle}</small>
+                    </div>
+                    <div style="color:#aaa">▼</div>
+                </div>
+                <div class="result-body">
+                    ${renderDetails(item.result)}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function renderDetails(result) {
+        let html = '';
+        
+        // Mismatches first
+        if (result.mismatches.length > 0) {
+            html += '<strong>❌ Mismatches:</strong><br>';
+            result.mismatches.forEach(m => {
+                const label = fieldMappings[m.field] || m.field;
+                html += `<div class="badge badge-fail" style="display:block; margin:5px 0;">
+                    ${label}: Expected "${m.ruleVal}" but found "${m.alertVal}"
+                </div>`;
+            });
+            html += '<hr style="border:0; border-top:1px dashed #eee; margin:10px 0;">';
+        }
+
+        // Matches
+        if (document.getElementById('showDetailsCheck').checked && result.matches.length > 0) {
+            html += '<strong>✅ Matches:</strong><br>';
+            result.matches.forEach(m => {
+                const label = fieldMappings[m.field] || m.field;
+                html += `<div class="badge badge-match">${label}</div>`;
+            });
+        }
+        return html;
+    }
+
+    function filterResults() {
+        const query = document.getElementById('filterInput').value.toLowerCase();
+        document.querySelectorAll('.result-card').forEach(card => {
+            const text = card.getAttribute('data-search');
+            card.style.display = text.includes(query) ? 'block' : 'none';
+        });
+    }
+
+    function parseKeyValueFormat(text) {
+        // Basic parser for "Key: Value" text
+        const data = {};
+        text.split('\n').forEach(line => {
+            const parts = line.split(':');
+            if (parts.length > 1) {
+                let key = parts.shift().trim();
+                let val = parts.join(':').trim();
+                if (key.includes('.')) {
+                    const kParts = key.split('.');
+                    if(!data[kParts[0]]) data[kParts[0]] = {};
+                    data[kParts[0]][kParts[1]] = val;
+                } else {
+                    data[key] = val;
+                }
+            }
+        });
+        return data;
+    }
+</script>
 </body>
 </html>
