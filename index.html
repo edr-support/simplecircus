@@ -2,24 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Suppression Inspector</title>
+    <title>Alert Suppression Inspector v6 (PDF Fix)</title>
     <link rel="icon" href="NyanCat.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        /* --- SCREEN STYLES (Interactive UI) --- */
+        /* --- GLOBAL & SCREEN STYLES --- */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f4;
             color: #333;
             margin: 0; padding: 0;
         }
+        
+        /* Dashboard Container */
+        #dashboardContainer {
+            display: block; /* Default visible */
+        }
+
         h1 {
             background-color: #0515f0;
             color: #fff;
             padding: 20px;
             display: flex; justify-content: space-between; align-items: center;
+            margin: 0;
         }
         main {
             padding: 20px; margin: 20px auto;
@@ -42,10 +49,9 @@
         .btn-secondary:hover { background: #5a6268; }
 
         /* Interactive Results */
-        .result-card { border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; }
+        .result-card { border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; background: #fff; }
         .result-header { padding: 10px; cursor: pointer; display: flex; justify-content: space-between; background: #f9f9f9; }
         .result-body { padding: 15px; display: none; border-top: 1px solid #eee; }
-        .result-body.open { display: block; }
         .match-card { border-left: 5px solid green; }
         .mismatch-card { border-left: 5px solid #d00; }
 
@@ -59,178 +65,195 @@
         /* Loading Overlay */
         #loadingOverlay {
             display: none; position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(255,255,255,0.9); z-index: 999;
+            background: rgba(255,255,255,0.95); z-index: 9999;
             justify-content: center; align-items: center; flex-direction: column;
         }
 
-        /* --- PDF PRINT STYLES (Hidden from Screen) --- */
+        /* --- PDF DOCUMENT STYLES (Hidden by default) --- */
+        #pdfWrapper {
+            display: none; /* Hidden until we want to print */
+            background: #555;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+        
         #pdfContainer {
-            position: absolute; left: -9999px; top: 0; /* Hide from screen */
-            width: 210mm; /* A4 Width */
-            padding: 15mm;
+            width: 210mm;
+            min-height: 297mm;
             background: white;
-            color: black;
+            padding: 15mm;
+            box-sizing: border-box;
             font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 10pt;
-            box-sizing: border-box;
+            color: #000;
         }
 
-        /* PDF Header */
-        .pdf-title { font-size: 18pt; font-weight: bold; color: #333; margin-bottom: 5px; border-bottom: 2px solid #0515f0; padding-bottom: 10px; }
+        /* PDF Typography */
+        .pdf-title { font-size: 20pt; font-weight: bold; color: #222; margin-bottom: 5px; border-bottom: 2px solid #0515f0; padding-bottom: 10px; }
         .pdf-meta { font-size: 9pt; color: #666; margin-bottom: 20px; }
         
-        /* PDF Section Headers */
         .pdf-section-title { 
             font-size: 12pt; font-weight: bold; 
-            background: #eee; padding: 5px 10px; 
+            background: #eee; padding: 6px 10px; 
             margin-top: 20px; margin-bottom: 10px; 
-            border-left: 4px solid #0515f0;
+            border-left: 5px solid #0515f0;
         }
 
-        /* Alert Data Table (PDF) */
+        /* PDF Tables */
         .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
-        .pdf-table td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
-        .pdf-label { width: 30%; font-weight: bold; background: #f9f9f9; }
+        .pdf-table td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
+        .pdf-label { width: 25%; font-weight: bold; background: #f5f5f5; }
 
-        /* Rule Cards (PDF) */
+        /* PDF Cards */
         .pdf-card { 
-            border: 1px solid #ccc; 
-            margin-bottom: 15px; 
-            page-break-inside: avoid; /* PREVENT CUTTING CARD IN HALF */
+            border: 1px solid #999; 
+            margin-bottom: 12px; 
+            page-break-inside: avoid; /* Important for PDF pagination */
             border-radius: 4px;
         }
-        .pdf-card-header { padding: 8px; font-weight: bold; font-size: 10pt; background: #f0f0f0; border-bottom: 1px solid #ccc; }
+        .pdf-card-header { padding: 6px 10px; font-weight: bold; font-size: 10pt; border-bottom: 1px solid #999; }
         .pdf-card-header.match { background: #d4edda; color: #155724; }
         .pdf-card-header.fail { background: #f8d7da; color: #721c24; }
-        
-        .pdf-card-body { padding: 10px; }
+        .pdf-card-body { padding: 8px 10px; }
 
-        /* Comparison Tables (PDF) */
         .pdf-comp-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 5px; }
-        .pdf-comp-table th { text-align: left; background: #eee; padding: 4px; border: 1px solid #ddd; }
-        .pdf-comp-table td { padding: 4px; border: 1px solid #ddd; vertical-align: top; }
-        .pdf-cell-fail { background: #fff5f5; color: #d00; }
-        .pdf-cell-pass { background: #f0fff4; color: #006400; }
+        .pdf-comp-table th { text-align: left; background: #eee; padding: 4px; border: 1px solid #999; font-size: 8pt; }
+        .pdf-comp-table td { padding: 4px; border: 1px solid #999; vertical-align: top; }
+        .pdf-cell-fail { background: #fff5f5; color: #b00; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="loadingOverlay">
-    <div style="font-size: 30px; margin-bottom: 10px;">⚙️</div>
-    <div style="font-size: 18px; font-weight: bold;">Processing...</div>
+    <div style="font-size: 40px; margin-bottom: 15px;">⚙️</div>
+    <div id="loadingText" style="font-size: 20px; font-weight: bold; color:#333;">Generating PDF Report...</div>
 </div>
 
-<h1>Alert Inspector <small style="font-size:14px; opacity:0.8; margin-left:10px;">Augmented</small></h1>
+<div id="dashboardContainer">
+    <h1>Alert Inspector <small style="font-size:14px; opacity:0.8; margin-left:10px;">v6 PDF Fix</small></h1>
 
-<main>
-    <div class="editor-container">
-        <div class="editor-box">
-            <label><strong>1. Alert Data:</strong></label>
-            <div id="alertEditor" class="editor"></div>
+    <main>
+        <div class="editor-container">
+            <div class="editor-box">
+                <label><strong>1. Alert Data:</strong></label>
+                <div id="alertEditor" class="editor"></div>
+            </div>
+            <div class="editor-box">
+                <label><strong>2. Suppression Rules:</strong></label>
+                <div id="ruleEditor" class="editor"></div>
+            </div>
         </div>
-        <div class="editor-box">
-            <label><strong>2. Suppression Rules / Manifest:</strong></label>
-            <div id="ruleEditor" class="editor"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <label><input type="checkbox" id="strictCaseCheck" checked> Strict Case Sensitivity</label>
+                <button class="btn-primary" style="margin-left:15px;" onclick="startProcessing()">Validate Rules</button>
+            </div>
+            <button id="pdfBtn" class="btn-secondary" style="display:none;" onclick="downloadPDF()">📄 Download PDF Report</button>
         </div>
-    </div>
+        
+        <div id="screenResults" style="margin-top:20px;"></div>
+    </main>
+</div>
 
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <label><input type="checkbox" id="strictCaseCheck" checked> Strict Case</label>
-            <button class="btn-primary" style="margin-left:15px;" onclick="startProcessing()">Validate</button>
-        </div>
-        <button id="pdfBtn" class="btn-secondary" style="display:none;" onclick="downloadPDF()">📄 Download PDF Report</button>
-    </div>
-    
-    <div id="screenResults" style="margin-top:20px;"></div>
-</main>
+<div id="pdfWrapper" style="display:none;">
+    <div id="pdfContainer">
+        <div class="pdf-title">Suppression Analysis Report</div>
+        <div class="pdf-meta" id="pdfDate"></div>
 
-<div id="pdfContainer">
-    <div class="pdf-title">Suppression Analysis Report</div>
-    <div class="pdf-meta" id="pdfDate">Generated on: </div>
+        <div class="pdf-section-title">1. Alert Context</div>
+        <table class="pdf-table" id="pdfAlertTable">
+            </table>
 
-    <div class="pdf-section-title">1. Alert Context</div>
-    <table class="pdf-table" id="pdfAlertTable">
+        <div class="pdf-section-title">2. Execution Summary</div>
+        <table class="pdf-table">
+            <tr>
+                <td class="pdf-label">Total Rules Evaluated</td>
+                <td id="pdfTotalRules">0</td>
+                <td class="pdf-label">Overall Status</td>
+                <td id="pdfStatus" style="font-weight:bold;">-</td>
+            </tr>
         </table>
 
-    <div class="pdf-section-title">2. Execution Summary</div>
-    <table class="pdf-table">
-        <tr>
-            <td class="pdf-label">Total Rules Checked</td>
-            <td id="pdfTotalRules">0</td>
-            <td class="pdf-label">Suppression Status</td>
-            <td id="pdfStatus" style="font-weight:bold;">-</td>
-        </tr>
-    </table>
-
-    <div class="pdf-section-title">3. Rule Details</div>
-    <div id="pdfRulesList">
-        </div>
+        <div class="pdf-section-title">3. Rule Details</div>
+        <div id="pdfRulesList">
+            </div>
+    </div>
 </div>
 
 <script>
-    // --- SETUP ---
+    // --- EDITOR SETUP ---
     const alertEditor = ace.edit("alertEditor");
     alertEditor.setTheme("ace/theme/monokai"); alertEditor.session.setMode("ace/mode/text");
     const ruleEditor = ace.edit("ruleEditor");
     ruleEditor.setTheme("ace/theme/monokai"); ruleEditor.session.setMode("ace/mode/json");
 
+    // Field Name Mapping
+    const fieldMap = {
+        "ip": "IP Address", "os": "Operating System", "uid": "User ID", 
+        "name": "Process Name", "path": "File Path", "sha1": "SHA1", 
+        "sha256": "SHA256", "type": "Item Type", "hostname": "Hostname", 
+        "commandLine": "Command Line", "parentProcessName": "Parent Process", 
+        "signature.issuerName": "Signer", "targetGroupId": "Location ID",
+        "organizationId": "Org ID", "avPositives": "AV Hits"
+    };
+
     let globalAlertData = {};
     let globalResults = [];
 
-    const fieldMap = {
-        "ip": "IP Address", "os": "OS", "uid": "User ID", "name": "Process Name",
-        "path": "File Path", "sha1": "SHA1", "sha256": "SHA256", "type": "Type",
-        "hostname": "Hostname", "commandLine": "Command Line", "parentProcessName": "Parent Process",
-        "signature.issuerName": "Signer", "sourceType": "Source", "targetGroupId": "Loc ID",
-        "organizationId": "Org ID"
-    };
-
+    // --- MAIN PROCESSING ---
     function startProcessing() {
+        document.getElementById('loadingText').innerText = "Analyzing Rules...";
         document.getElementById('loadingOverlay').style.display = 'flex';
         document.getElementById('screenResults').innerHTML = '';
         document.getElementById('pdfBtn').style.display = 'none';
 
         setTimeout(() => {
             try {
-                processData();
+                executeAnalysis();
             } catch (e) {
-                document.getElementById('screenResults').innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
+                document.getElementById('screenResults').innerHTML = `<div style="color:red; padding:15px; border:1px solid red; border-radius:4px;">Error: ${e.message}</div>`;
             } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         }, 100);
     }
 
-    function processData() {
-        // Parse Inputs
+    function executeAnalysis() {
+        // 1. Get Data
         const alertText = alertEditor.getValue().trim();
         try { globalAlertData = JSON.parse(alertText); } 
         catch (e) { globalAlertData = parseKeyValue(alertText); }
 
         const ruleText = ruleEditor.getValue().trim();
         if(!ruleText) throw new Error("No rules provided.");
+        
         let rawRules;
         try { rawRules = JSON.parse(ruleText); } catch(e) { throw new Error("Invalid Rule JSON"); }
-        
         const rules = extractRules(rawRules);
         const strict = document.getElementById('strictCaseCheck').checked;
 
-        // Run Comparison
+        // 2. Compare
         globalResults = rules.map(rule => ({
             meta: rule,
             result: compare(globalAlertData, rule, strict)
         }));
         
-        // Sort: Matches first
+        // Sort matches first
         globalResults.sort((a,b) => (a.result.isMatch === b.result.isMatch) ? 0 : a.result.isMatch ? -1 : 1);
 
+        // 3. Render Screen
         renderScreen();
-        preparePDF(); // Pre-render the hidden PDF structure
+        
+        // 4. Pre-Render Hidden PDF DOM
+        preparePDFDOM();
+        
         document.getElementById('pdfBtn').style.display = 'block';
     }
 
-    // --- RENDER SCREEN (Interactive) ---
+    // --- SCREEN RENDERER ---
     function renderScreen() {
         const div = document.getElementById('screenResults');
         const matches = globalResults.filter(r => r.result.isMatch).length;
@@ -257,25 +280,23 @@
                 <div class="result-body">
             `;
             
-            // Mismatches
             if(item.result.mismatches.length > 0) {
-                html += `<div style="margin-bottom:10px; font-weight:bold; color:#d00;">Mismatches:</div>`;
+                html += `<div style="margin-bottom:5px; font-weight:bold; color:#d00;">Mismatches:</div>`;
                 item.result.mismatches.forEach(m => {
                     html += `
                         <div class="comp-row">
                             <div class="comp-label">${fieldMap[m.field] || m.field}</div>
-                            <div class="comp-val val-exp">Expected: ${escape(m.ruleVal)}</div>
+                            <div class="comp-val val-exp">Exp: ${escape(m.ruleVal)}</div>
                             <div class="comp-val val-found">Found: ${escape(m.alertVal)}</div>
                         </div>`;
                 });
             }
 
-            // Matches
             if(item.result.matches.length > 0) {
-                html += `<div style="margin:10px 0; font-weight:bold; color:green;">Matches:</div>`;
-                item.result.matches.forEach(m => {
-                    html += `<span style="background:#e6fffa; border:1px solid #c3e6cb; padding:2px 8px; border-radius:10px; font-size:12px; margin-right:5px;">${fieldMap[m.field] || m.field}</span>`;
-                });
+                html += `<div style="margin:10px 0 5px; font-weight:bold; color:green;">Matches:</div>`;
+                html += item.result.matches.map(m => 
+                    `<span style="background:#e6fffa; border:1px solid #c3e6cb; padding:2px 8px; border-radius:10px; font-size:12px; margin-right:5px; display:inline-block; margin-bottom:4px;">${fieldMap[m.field] || m.field}</span>`
+                ).join('');
             }
             
             html += `</div>`;
@@ -284,23 +305,20 @@
         });
     }
 
-    // --- PREPARE PDF (Hidden Document) ---
-    function preparePDF() {
-        document.getElementById('pdfDate').innerText = "Generated on: " + new Date().toLocaleString();
+    // --- PDF DOM PREPARATION ---
+    function preparePDFDOM() {
+        document.getElementById('pdfDate').innerText = "Report Date: " + new Date().toLocaleString();
 
-        // 1. Fill Alert Data Table
+        // Fill Alert Table
         const table = document.getElementById('pdfAlertTable');
         table.innerHTML = '';
-        // Select key fields to display in summary
         const keyFields = ['hostname', 'ip', 'name', 'path', 'commandLine', 'parentProcessName', 'sha1'];
         keyFields.forEach(k => {
             const val = getVal(globalAlertData, k);
-            if(val) {
-                table.innerHTML += `<tr><td class="pdf-label">${fieldMap[k] || k}</td><td>${escape(val)}</td></tr>`;
-            }
+            if(val) table.innerHTML += `<tr><td class="pdf-label">${fieldMap[k] || k}</td><td>${escape(val)}</td></tr>`;
         });
 
-        // 2. Stats
+        // Stats
         const matches = globalResults.filter(r => r.result.isMatch).length;
         document.getElementById('pdfTotalRules').innerText = globalResults.length;
         const statusElem = document.getElementById('pdfStatus');
@@ -312,7 +330,7 @@
             statusElem.style.color = "red";
         }
 
-        // 3. Rule Cards (Document Style)
+        // Fill Rules
         const list = document.getElementById('pdfRulesList');
         list.innerHTML = '';
 
@@ -331,11 +349,10 @@
                 <div class="pdf-card-body">
             `;
 
-            // Comparison Table for PDF
             if (item.result.mismatches.length > 0) {
                 html += `<div style="font-weight:bold; font-size:9pt; margin-bottom:4px; color:#d00;">Mismatched Conditions:</div>
                          <table class="pdf-comp-table">
-                            <tr><th style="width:25%">Field</th><th style="width:37%">Expected</th><th style="width:37%">Found in Alert</th></tr>`;
+                            <tr><th style="width:25%">Field</th><th style="width:35%">Expected</th><th style="width:40%">Found in Alert</th></tr>`;
                 item.result.mismatches.forEach(m => {
                     html += `<tr>
                                 <td>${fieldMap[m.field] || m.field}</td>
@@ -347,9 +364,9 @@
             }
             
             if (item.result.matches.length > 0) {
-                html += `<div style="font-weight:bold; font-size:9pt; margin-top:10px; color:green;">Matched Conditions:</div>
+                html += `<div style="font-weight:bold; font-size:9pt; margin-top:8px; color:green;">Matched Conditions:</div>
                          <div style="font-size:8pt; margin-top:2px;">`;
-                html += item.result.matches.map(m => `<span style="border:1px solid #ccc; padding:1px 4px; margin-right:4px; background:#f9f9f9;">${fieldMap[m.field] || m.field}</span>`).join('');
+                html += item.result.matches.map(m => `<span style="border:1px solid #ccc; padding:1px 4px; margin-right:4px; background:#f9f9f9; display:inline-block;">${fieldMap[m.field] || m.field}</span>`).join('');
                 html += `</div>`;
             }
 
@@ -359,19 +376,43 @@
         });
     }
 
+    // --- PDF DOWNLOAD (VIEW SWAP FIX) ---
     function downloadPDF() {
-        const element = document.getElementById('pdfContainer');
+        // 1. Show Loading
+        document.getElementById('loadingText').innerText = "Generating PDF...";
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        // 2. SWAP VIEWS: Hide Dashboard, Show PDF Wrapper
+        const dashboard = document.getElementById('dashboardContainer');
+        const pdfWrapper = document.getElementById('pdfWrapper');
+        const pdfElement = document.getElementById('pdfContainer');
+
+        dashboard.style.display = 'none';
+        pdfWrapper.style.display = 'flex'; // Visible flex container
+
         const opt = {
-            margin:       0, // We control margin in CSS (#pdfContainer padding)
+            margin:       0,
             filename:     'Alert_Analysis_Report.pdf',
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, scrollY: 0 },
+            html2canvas:  { scale: 2, scrollY: 0, windowWidth: 1200 }, // windowWidth helps ensure layout
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        html2pdf().set(opt).from(element).save();
+
+        // 3. Generate
+        html2pdf().set(opt).from(pdfElement).save().then(() => {
+            // 4. Restore View
+            pdfWrapper.style.display = 'none';
+            dashboard.style.display = 'block';
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }).catch(err => {
+            alert("Error generating PDF: " + err);
+            pdfWrapper.style.display = 'none';
+            dashboard.style.display = 'block';
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
     }
 
-    // --- LOGIC HELPERS ---
+    // --- LOGIC UTILS ---
     function extractRules(input) {
         if(Array.isArray(input)) return input;
         if(typeof input==='object' && input!==null) {
@@ -392,53 +433,38 @@
                 res.activeCount++;
                 const aVal = getVal(alertData, key);
                 const rVal = meta[key].value;
-                const match = check(aVal, rVal, meta[key].operator, meta[key].dataType, strict);
-                if(match) res.matches.push({field:key, ruleVal:rVal, alertVal:aVal});
+                if(check(aVal, rVal, meta[key].operator, meta[key].dataType, strict))
+                    res.matches.push({field:key, ruleVal:rVal, alertVal:aVal});
                 else res.mismatches.push({field:key, ruleVal:rVal, alertVal:aVal});
             }
         }
-        // Sig
         if(meta.signature && meta.signature.issuerName && meta.signature.issuerName.active) {
             res.activeCount++;
             const aVal = getVal(alertData, 'signature.issuerName');
             const rVal = meta.signature.issuerName.value;
-            const match = check(aVal, rVal, '==', 'string', strict);
-            if(match) res.matches.push({field:'signature.issuerName', ruleVal:rVal, alertVal:aVal});
+            if(check(aVal, rVal, '==', 'string', strict))
+                res.matches.push({field:'signature.issuerName', ruleVal:rVal, alertVal:aVal});
             else res.mismatches.push({field:'signature.issuerName', ruleVal:rVal, alertVal:aVal});
         }
-        
         res.isMatch = (res.activeCount > 0 && res.mismatches.length === 0);
         return res;
     }
 
     function check(aVal, rVal, op, type, strict) {
-        if(aVal == null) return false;
-        if(type === 'number') { return parseFloat(aVal) == parseFloat(rVal); } // Simplified number check
-        
+        if(aVal === undefined || aVal === null) return false;
+        if(type === 'number') { return parseFloat(aVal) == parseFloat(rVal); }
         let a = String(aVal), r = String(rVal);
         if(!strict) { a=a.toLowerCase(); r=r.toLowerCase(); }
         if(r.includes('*')) {
             const rx = '^'+r.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')+'$';
             return new RegExp(rx, strict?'':'i').test(a);
         }
-        return a === r;
+        return op==='!=' ? a!==r : a===r;
     }
 
-    function getVal(obj, path) {
-        return path.split('.').reduce((o,i)=> (o?o[i]:undefined), obj);
-    }
-
-    function parseKeyValue(text) {
-        let d={}; text.split('\n').forEach(l=>{
-            let p=l.split(':'); if(p.length>1) {
-                let k=p.shift().trim(), v=p.join(':').trim();
-                if(k.includes('.')) { let s=k.split('.'); if(!d[s[0]])d[s[0]]={}; d[s[0]][s[1]]=v; }
-                else d[k]=v;
-            }
-        }); return d;
-    }
-    
-    function escape(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '(empty)'; }
+    function getVal(obj, path) { return path.split('.').reduce((o,i)=> (o?o[i]:undefined), obj); }
+    function parseKeyValue(t) { let d={}; t.split('\n').forEach(l=>{ let p=l.split(':'); if(p.length>1) { let k=p.shift().trim(),v=p.join(':').trim(); if(k.includes('.')){let s=k.split('.');if(!d[s[0]])d[s[0]]={};d[s[0]][s[1]]=v}else d[k]=v; } }); return d; }
+    function escape(s) { return s===undefined||s===null||s==='' ? '(empty)' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>
 </html>
