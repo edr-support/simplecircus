@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Suppression Inspector</title>
+    <title>Alert Suppression Inspector v4</title>
     <link rel="icon" href="NyanCat.ico" type="image/x-icon">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f4f4f4;
+            color: #333;
         }
         h1 {
             background-color: #0515f0;
@@ -33,6 +36,7 @@
         .editor-container {
             display: flex;
             gap: 20px;
+            margin-bottom: 20px;
         }
         .editor-box {
             flex: 1;
@@ -42,23 +46,135 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
+        
+        /* Action Buttons */
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
         button {
-            background-color: #2e06df;
-            color: #fff;
             padding: 12px 25px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 15px;
             font-size: 16px;
             font-weight: bold;
-            transition: background 0.3s;
+            transition: opacity 0.2s;
         }
-        button:hover {
-            background-color: #45a049;
+        .btn-primary { background-color: #2e06df; color: white; }
+        .btn-primary:hover { background-color: #1c048a; }
+        
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        /* Filter Input */
+        #filterInput {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 20px 0;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        /* Results & Cards */
+        .result-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
-        /* Loading Overlay */
+        /* Header Styling */
+        .result-header {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        .result-header:hover { background: #eee; }
+        
+        .match-card { border-left: 6px solid #28a745; }
+        .match-card .result-header { background: #ecf9ee; }
+        
+        .mismatch-card { border-left: 6px solid #dc3545; }
+        
+        /* Detailed Results Body */
+        .result-body {
+            padding: 15px;
+            display: none;
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+        }
+        .result-body.open { display: block; }
+
+        /* HIGH CONTRAST MISMATCH STYLING */
+        .comparison-row {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        .comparison-label {
+            flex: 0 0 150px;
+            background: #eee;
+            padding: 8px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid #ddd;
+        }
+        .comparison-expected {
+            flex: 1;
+            background: #e6fffa; /* Light Green Tint */
+            color: #006400;
+            padding: 8px;
+            border-right: 1px solid #ddd;
+        }
+        .comparison-found {
+            flex: 1;
+            background: #fff0f0; /* Light Red Tint */
+            color: #d00;
+            padding: 8px;
+            font-weight: bold;
+        }
+        .label-text { font-size: 11px; text-transform: uppercase; color: #666; display: block; margin-bottom: 2px;}
+
+        /* Match Styling */
+        .match-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            margin: 2px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 12px;
+            font-size: 13px;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* Summary Boxes */
+        .summary-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .summary-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .summary-fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Loader */
         #loadingOverlay {
             display: none;
             position: fixed;
@@ -79,117 +195,61 @@
             margin-bottom: 15px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Results Styling */
-        .summary-box {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .summary-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .summary-fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         
-        #filterInput {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            box-sizing: border-box;
-            display: none;
-        }
-
-        .result-section { margin-top: 20px; }
-        .result-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            overflow: hidden;
-        }
-        .result-header {
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8f9fa;
-            user-select: none;
-        }
-        .result-header:hover { background: #eee; }
-        .match-card { border-left: 5px solid #28a745; }
-        .match-card .result-header { background: #e6ffe6; }
-        .mismatch-card { border-left: 5px solid #dc3545; }
-        
-        .result-body {
-            padding: 15px;
-            display: none;
-            border-top: 1px solid #eee;
-        }
-        .result-body.open { display: block; }
-        
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-right: 5px;
-        }
-        .badge-match { background: #d4edda; color: #155724; }
-        .badge-fail { background: #f8d7da; color: #721c24; }
-
-        .settings {
-            margin-top: 10px;
-            padding: 10px;
-            background: #f9f9f9;
-            border: 1px solid #eee;
-            border-radius: 4px;
-        }
-        label { cursor: pointer; margin-right: 15px; }
+        /* PDF specific tweaks */
+        .pdf-only { display: none; }
     </style>
 </head>
 <body>
 
 <div id="loadingOverlay">
     <div class="spinner"></div>
-    <div id="loadingText" style="font-size: 18px; font-weight: bold; color: #333;">Processing Manifest...</div>
+    <div id="loadingText" style="font-size: 18px; font-weight: bold;">Processing...</div>
 </div>
 
-<h1>Alert Suppression Inspector v3</h1>
+<h1>
+    Alert Suppression Inspector v4
+    <span style="font-size: 14px; opacity: 0.8;">Manfiest Support + PDF Export</span>
+</h1>
 
 <main>
-    <div class="editor-container">
-        <div class="editor-box">
-            <label><strong>1. Alert Data:</strong> (JSON or Key-Value)</label>
-            <div id="alertEditor" class="editor"></div>
+    <div id="inputSection">
+        <div class="editor-container">
+            <div class="editor-box">
+                <label><strong>1. Alert Data:</strong> (JSON or Key-Value)</label>
+                <div id="alertEditor" class="editor"></div>
+            </div>
+            <div class="editor-box">
+                <label><strong>2. Suppression Rules / Manifest:</strong> (Paste Array or Object)</label>
+                <div id="ruleEditor" class="editor"></div>
+            </div>
         </div>
-        <div class="editor-box">
-            <label><strong>2. Suppression Rules / Manifest:</strong> (Paste Array or Object)</label>
-            <div id="ruleEditor" class="editor"></div>
+
+        <div class="settings">
+            <label><input type="checkbox" id="strictCaseCheck" checked> Strict Case Sensitivity</label>
+            <label style="margin-left: 20px;"><input type="checkbox" id="showDetailsCheck" checked> Show Field Details</label>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-primary" onclick="startProcessing()">Validate Suppression</button>
         </div>
     </div>
-
-    <div class="settings">
-        <label><input type="checkbox" id="strictCaseCheck" checked> Strict Case Sensitivity</label>
-        <label><input type="checkbox" id="showDetailsCheck" checked> Show Field Details</label>
-    </div>
-
-    <button onclick="startProcessing()">Validate Against Manifest</button>
 
     <hr>
 
-    <input type="text" id="filterInput" placeholder="🔍 Filter results by Rule Name, ID, or Status..." onkeyup="filterResults()">
-    <div id="summary"></div>
-    <div id="results"></div>
+    <div class="btn-group" id="exportContainer" style="display:none; justify-content: space-between; align-items: center;">
+        <input type="text" id="filterInput" placeholder="🔍 Filter results by Rule Name, ID..." onkeyup="filterResults()" style="margin:0; flex:1; max-width:500px;">
+        <button class="btn-secondary" onclick="exportToPDF()">Download PDF Report</button>
+    </div>
+
+    <div id="reportArea">
+        <div id="summary"></div>
+        <div id="results"></div>
+    </div>
 </main>
 
 <script>
-    // --- 1. SETUP EDITORS ---
+    // --- 1. SETUP ---
     const alertEditor = ace.edit("alertEditor");
     alertEditor.setTheme("ace/theme/monokai");
     alertEditor.session.setMode("ace/mode/text");
@@ -198,7 +258,6 @@
     ruleEditor.setTheme("ace/theme/monokai");
     ruleEditor.session.setMode("ace/mode/json");
 
-    // Human readable field names
     const fieldMappings = {
         "ip": "IP Address", "os": "Operating System", "uid": "Process Owner UID",
         "name": "Process Name", "path": "File Path", "sha1": "File SHA1",
@@ -214,15 +273,13 @@
 
     let globalResults = [];
 
-    // --- 2. PROCESSING LOGIC ---
+    // --- 2. PROCESSING ---
     function startProcessing() {
-        // Show loader
         document.getElementById('loadingOverlay').style.display = 'flex';
         document.getElementById('results').innerHTML = '';
         document.getElementById('summary').innerHTML = '';
-        document.getElementById('filterInput').style.display = 'none';
+        document.getElementById('exportContainer').style.display = 'none';
 
-        // Brief timeout to let UI render the spinner before heavy JS starts
         setTimeout(() => {
             try {
                 executeComparison();
@@ -235,28 +292,24 @@
     }
 
     function executeComparison() {
-        // 1. Parse Alert
+        // Parse Inputs
         let alertData;
         const alertText = alertEditor.getValue().trim();
         try { alertData = JSON.parse(alertText); } 
         catch (e) { alertData = parseKeyValueFormat(alertText); }
 
-        // 2. Parse Rules (Smart Detection)
         const ruleText = ruleEditor.getValue().trim();
         if(!ruleText) throw new Error("Please paste suppression rules.");
-        
         let rawRules;
         try { rawRules = JSON.parse(ruleText); }
         catch(e) { throw new Error("Invalid JSON in Rule/Manifest box."); }
 
-        // Extract array from the JSON regardless of format
         const rulesArray = extractRulesArray(rawRules);
-        
-        if (rulesArray.length === 0) throw new Error("No suppression rules found in the provided JSON.");
+        if (rulesArray.length === 0) throw new Error("No suppression rules found.");
 
-        // 3. Compare All
         const strictCase = document.getElementById('strictCaseCheck').checked;
-        
+
+        // Map Results
         globalResults = rulesArray.map(rule => {
             const result = compareRule(alertData, rule, strictCase);
             return {
@@ -269,25 +322,134 @@
         renderResults();
     }
 
-    // Helper: Finds the array inside the JSON object
-    function extractRulesArray(input) {
-        // Case A: It's already an array
-        if (Array.isArray(input)) return input;
+    // --- 3. RENDERING ---
+    function renderResults() {
+        const container = document.getElementById('results');
+        const summary = document.getElementById('summary');
+        const matches = globalResults.filter(r => r.isMatch);
+        
+        // Update Summary
+        if (matches.length > 0) {
+            summary.innerHTML = `<div class="summary-box summary-success">✅ ALERT SUPPRESSED: ${matches.length} rule(s) matched successfully.</div>`;
+        } else {
+            summary.innerHTML = `<div class="summary-box summary-fail">❌ ALERT TRIGGERED: No suppression rules matched.</div>`;
+        }
 
-        // Case B: It's an object, let's look for the array
+        // Show Export/Filter Bar
+        document.getElementById('exportContainer').style.display = 'flex';
+
+        // Sort: Matches first
+        globalResults.sort((a, b) => (a.isMatch === b.isMatch) ? 0 : a.isMatch ? -1 : 1);
+
+        globalResults.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `result-card ${item.isMatch ? 'match-card' : 'mismatch-card'}`;
+            div.setAttribute('data-search', `${item.meta.name} ${item.meta.id}`.toLowerCase());
+            
+            const icon = item.isMatch ? '✅' : '❌';
+            const failCount = item.result.mismatches.length;
+            const subtitle = item.isMatch 
+                ? '<span style="color:green; font-weight:bold;">Active & Matched</span>' 
+                : `<span style="color:#d00; font-weight:bold;">Failed on ${failCount} condition(s)</span>`;
+
+            div.innerHTML = `
+                <div class="result-header" onclick="toggleDetails(this)">
+                    <div>
+                        <strong style="font-size:16px;">${icon} ${item.meta.name || 'Unnamed Rule'}</strong> 
+                        <span style="color:#777; font-size:12px; margin-left:10px;">ID: ${item.meta.id}</span>
+                        <div style="margin-top:4px;">${subtitle}</div>
+                    </div>
+                    <div style="color:#aaa; font-size:12px;">Click to toggle details ▼</div>
+                </div>
+                <div class="result-body">
+                    ${renderDetails(item.result)}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function renderDetails(result) {
+        let html = '';
+        
+        // High Contrast Mismatches
+        if (result.mismatches.length > 0) {
+            html += '<h4 style="margin:5px 0 10px; color:#d00; border-bottom:1px solid #eee; padding-bottom:5px;">❌ Mismatch Details</h4>';
+            result.mismatches.forEach(m => {
+                const label = fieldMappings[m.field] || m.field;
+                html += `
+                    <div class="comparison-row">
+                        <div class="comparison-label">${label}</div>
+                        <div class="comparison-expected">
+                            <span class="label-text">Rule Expected (${m.op}):</span>
+                            ${escapeHtml(m.ruleVal)}
+                        </div>
+                        <div class="comparison-found">
+                            <span class="label-text">Alert Found:</span>
+                            ${escapeHtml(m.alertVal)}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Matches
+        if (document.getElementById('showDetailsCheck').checked && result.matches.length > 0) {
+            html += '<h4 style="margin:15px 0 10px; color:green; border-bottom:1px solid #eee; padding-bottom:5px;">✅ Matched Fields</h4>';
+            html += '<div>';
+            result.matches.forEach(m => {
+                const label = fieldMappings[m.field] || m.field;
+                html += `<span class="match-badge">${label}</span>`;
+            });
+            html += '</div>';
+        }
+        return html;
+    }
+
+    // --- 4. EXPORT TO PDF ---
+    function exportToPDF() {
+        // Expand all details for the PDF so they are visible
+        document.querySelectorAll('.result-body').forEach(el => el.style.display = 'block');
+
+        const element = document.getElementById('reportArea');
+        const opt = {
+            margin:       0.5,
+            filename:     'Alert_Suppression_Report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        // Generate PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restore UI state (Collapse details again if desired, or leave open)
+            document.querySelectorAll('.result-body').forEach(el => el.style.display = 'none');
+            alert("PDF Downloaded!");
+        });
+    }
+
+    // --- 5. UTILITIES & LOGIC ---
+    function toggleDetails(header) {
+        const body = header.nextElementSibling;
+        body.style.display = (body.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function filterResults() {
+        const query = document.getElementById('filterInput').value.toLowerCase();
+        document.querySelectorAll('.result-card').forEach(card => {
+            const text = card.getAttribute('data-search');
+            card.style.display = text.includes(query) ? 'block' : 'none';
+        });
+    }
+
+    function extractRulesArray(input) {
+        if (Array.isArray(input)) return input;
         if (typeof input === 'object' && input !== null) {
-            // Check common keys first
             if (Array.isArray(input.manifest)) return input.manifest;
             if (Array.isArray(input.rules)) return input.rules;
             if (Array.isArray(input.items)) return input.items;
-
-            // Fallback: Just grab the first array we find in the object keys
             const keys = Object.keys(input);
-            for (let k of keys) {
-                if (Array.isArray(input[k])) return input[k];
-            }
-            
-            // Case C: It's a single rule object
+            for (let k of keys) { if (Array.isArray(input[k])) return input[k]; }
             if (input.metadata || input.id) return [input];
         }
         return [];
@@ -298,9 +460,8 @@
         const metadata = ruleData.metadata || {};
 
         for (const key in metadata) {
-            if (key === 'signature') continue; // Handle separately
+            if (key === 'signature') continue; 
             const ruleItem = metadata[key];
-            
             if (ruleItem.active) {
                 results.totals.active++;
                 const alertVal = getNestedValue(alertData, key);
@@ -316,14 +477,12 @@
                 }
             }
         }
-
-        // Handle Signature separately
+        // Signature Logic
         if (metadata.signature && metadata.signature.issuerName && metadata.signature.issuerName.active) {
             results.totals.active++;
             const alertVal = getNestedValue(alertData, 'signature.issuerName');
             const ruleVal = metadata.signature.issuerName.value;
             const op = metadata.signature.issuerName.operator || '==';
-
             if (checkMatch(alertVal, ruleVal, op, 'string', strictCase)) {
                 results.matches.push({ field: 'signature.issuerName', alertVal, ruleVal, op });
                 results.totals.matched++;
@@ -335,10 +494,7 @@
     }
 
     function checkMatch(alertVal, ruleVal, op, type, strictCase) {
-        // Handle undefined/null
         if (alertVal === undefined || alertVal === null) return false;
-
-        // Number comparison
         if (type === 'number') {
             const a = parseFloat(alertVal);
             const r = parseFloat(ruleVal);
@@ -347,22 +503,13 @@
             if (op === '>') return a > r;
             return a == r;
         }
-
-        // String comparison
         let aStr = String(alertVal);
         let rStr = String(ruleVal);
-
-        if (!strictCase) {
-            aStr = aStr.toLowerCase();
-            rStr = rStr.toLowerCase();
-        }
-
-        // Wildcard support
+        if (!strictCase) { aStr = aStr.toLowerCase(); rStr = rStr.toLowerCase(); }
         if (rStr.includes('*')) {
             const regexStr = '^' + rStr.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$';
             return new RegExp(regexStr, strictCase ? '' : 'i').test(aStr);
         }
-
         return op === '!=' ? aStr !== rStr : aStr === rStr;
     }
 
@@ -371,90 +518,7 @@
         return path.split('.').reduce((o, i) => (o ? o[i] : undefined), obj);
     }
 
-    // --- 3. RENDERING ---
-    function renderResults() {
-        const container = document.getElementById('results');
-        const summary = document.getElementById('summary');
-        const filter = document.getElementById('filterInput');
-        
-        const matches = globalResults.filter(r => r.isMatch);
-        const total = globalResults.length;
-
-        if (matches.length > 0) {
-            summary.innerHTML = `<div class="summary-box summary-success">✅ SUCCESS: Alert suppressed by ${matches.length} rule(s) (out of ${total} checked).</div>`;
-        } else {
-            summary.innerHTML = `<div class="summary-box summary-fail">❌ ALERT TRIGGERED: No suppression rules matched (out of ${total} checked).</div>`;
-        }
-
-        filter.style.display = 'block';
-
-        // Sort: Matches first
-        globalResults.sort((a, b) => (a.isMatch === b.isMatch) ? 0 : a.isMatch ? -1 : 1);
-
-        globalResults.forEach(item => {
-            const div = document.createElement('div');
-            div.className = `result-card ${item.isMatch ? 'match-card' : 'mismatch-card'}`;
-            div.setAttribute('data-search', `${item.meta.name} ${item.meta.id}`.toLowerCase());
-            
-            const icon = item.isMatch ? '✅' : '❌';
-            const failCount = item.result.mismatches.length;
-            const subtitle = item.isMatch 
-                ? '<span style="color:green">Active & Matched</span>' 
-                : `<span style="color:red">Failed on ${failCount} condition(s)</span>`;
-
-            div.innerHTML = `
-                <div class="result-header" onclick="this.nextElementSibling.classList.toggle('open')">
-                    <div>
-                        <strong>${icon} ${item.meta.name || 'Unnamed Rule'}</strong> 
-                        <span style="color:#777; font-size:12px">(${item.meta.id})</span>
-                        <br><small>${subtitle}</small>
-                    </div>
-                    <div style="color:#aaa">▼</div>
-                </div>
-                <div class="result-body">
-                    ${renderDetails(item.result)}
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    }
-
-    function renderDetails(result) {
-        let html = '';
-        
-        // Mismatches first
-        if (result.mismatches.length > 0) {
-            html += '<strong>❌ Mismatches:</strong><br>';
-            result.mismatches.forEach(m => {
-                const label = fieldMappings[m.field] || m.field;
-                html += `<div class="badge badge-fail" style="display:block; margin:5px 0;">
-                    ${label}: Expected "${m.ruleVal}" but found "${m.alertVal}"
-                </div>`;
-            });
-            html += '<hr style="border:0; border-top:1px dashed #eee; margin:10px 0;">';
-        }
-
-        // Matches
-        if (document.getElementById('showDetailsCheck').checked && result.matches.length > 0) {
-            html += '<strong>✅ Matches:</strong><br>';
-            result.matches.forEach(m => {
-                const label = fieldMappings[m.field] || m.field;
-                html += `<div class="badge badge-match">${label}</div>`;
-            });
-        }
-        return html;
-    }
-
-    function filterResults() {
-        const query = document.getElementById('filterInput').value.toLowerCase();
-        document.querySelectorAll('.result-card').forEach(card => {
-            const text = card.getAttribute('data-search');
-            card.style.display = text.includes(query) ? 'block' : 'none';
-        });
-    }
-
     function parseKeyValueFormat(text) {
-        // Basic parser for "Key: Value" text
         const data = {};
         text.split('\n').forEach(line => {
             const parts = line.split(':');
@@ -471,6 +535,16 @@
             }
         });
         return data;
+    }
+    
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return "(empty)";
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>
 </body>
