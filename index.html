@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Suppression Inspector v6 (PDF Fix)</title>
+    <title>Alert Suppression Inspector v7 (Centered A4)</title>
     <link rel="icon" href="NyanCat.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -15,10 +15,13 @@
             color: #333;
             margin: 0; padding: 0;
         }
-        
-        /* Dashboard Container */
+
+        /* --- DASHBOARD STYLES (Visible by default) --- */
         #dashboardContainer {
-            display: block; /* Default visible */
+            display: block;
+            max-width: 1400px;
+            margin: 0 auto; /* Center the dashboard */
+            padding: 20px;
         }
 
         h1 {
@@ -26,13 +29,13 @@
             color: #fff;
             padding: 20px;
             display: flex; justify-content: space-between; align-items: center;
-            margin: 0;
+            margin: 0 0 20px 0;
+            border-radius: 4px;
         }
         main {
-            padding: 20px; margin: 20px auto;
             background-color: #fff;
             border-radius: 8px;
-            width: 95%; max-width: 1400px;
+            padding: 20px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .editor-container { display: flex; gap: 20px; margin-bottom: 20px; }
@@ -48,79 +51,93 @@
         .btn-secondary { background: #6c757d; color: white; }
         .btn-secondary:hover { background: #5a6268; }
 
-        /* Interactive Results */
+        /* Results UI */
         .result-card { border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; background: #fff; }
         .result-header { padding: 10px; cursor: pointer; display: flex; justify-content: space-between; background: #f9f9f9; }
         .result-body { padding: 15px; display: none; border-top: 1px solid #eee; }
         .match-card { border-left: 5px solid green; }
         .mismatch-card { border-left: 5px solid #d00; }
-
-        /* Comparison Styling (Screen) */
+        
         .comp-row { display: flex; border: 1px solid #eee; margin-bottom: 5px; font-size: 13px; }
         .comp-label { width: 140px; background: #f0f0f0; padding: 5px; font-weight: bold; border-right: 1px solid #ddd; }
         .comp-val { flex: 1; padding: 5px; }
         .val-exp { background: #e6fffa; color: #006400; border-right: 1px solid #ddd; }
         .val-found { background: #fff0f0; color: #d00; }
 
-        /* Loading Overlay */
+        /* Loader */
         #loadingOverlay {
             display: none; position: fixed; top:0; left:0; width:100%; height:100%;
             background: rgba(255,255,255,0.95); z-index: 9999;
             justify-content: center; align-items: center; flex-direction: column;
         }
 
-        /* --- PDF DOCUMENT STYLES (Hidden by default) --- */
+        /* --- PDF PRINT STYLES (Hidden from Dashboard) --- */
         #pdfWrapper {
-            display: none; /* Hidden until we want to print */
-            background: #555;
-            padding: 20px;
+            display: none; /* Hidden until download */
+            background: #525659; /* Acrobat Gray background */
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
+            padding: 40px 0;
+            justify-content: center; /* Center the page horizontally */
+            align-items: flex-start;
         }
         
         #pdfContainer {
             width: 210mm;
             min-height: 297mm;
             background: white;
-            padding: 15mm;
+            padding: 20mm; /* Standard A4 Margins */
             box-sizing: border-box;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
             font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 10pt;
             color: #000;
+            margin: 0 auto; /* Ensure centering */
         }
 
-        /* PDF Typography */
-        .pdf-title { font-size: 20pt; font-weight: bold; color: #222; margin-bottom: 5px; border-bottom: 2px solid #0515f0; padding-bottom: 10px; }
-        .pdf-meta { font-size: 9pt; color: #666; margin-bottom: 20px; }
+        /* PDF Elements */
+        .pdf-title { 
+            font-size: 22pt; font-weight: bold; color: #222; 
+            margin-bottom: 5px; border-bottom: 3px solid #0515f0; 
+            padding-bottom: 15px; width: 100%;
+        }
+        .pdf-meta { font-size: 10pt; color: #666; margin-bottom: 25px; }
         
         .pdf-section-title { 
-            font-size: 12pt; font-weight: bold; 
-            background: #eee; padding: 6px 10px; 
-            margin-top: 20px; margin-bottom: 10px; 
-            border-left: 5px solid #0515f0;
+            font-size: 14pt; font-weight: bold; 
+            background: #f0f0f0; padding: 8px 12px; 
+            margin-top: 25px; margin-bottom: 15px; 
+            border-left: 6px solid #0515f0;
+            width: 100%; box-sizing: border-box;
         }
 
-        /* PDF Tables */
-        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
-        .pdf-table td { border: 1px solid #ccc; padding: 6px; vertical-align: top; }
-        .pdf-label { width: 25%; font-weight: bold; background: #f5f5f5; }
+        /* Full width tables */
+        .pdf-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 20px; 
+            font-size: 10pt; 
+            table-layout: fixed; /* Fix layout shifting */
+        }
+        .pdf-table td { border: 1px solid #ccc; padding: 8px; vertical-align: top; word-wrap: break-word; }
+        .pdf-label { width: 30%; font-weight: bold; background: #f9f9f9; }
 
-        /* PDF Cards */
+        /* Full width cards */
         .pdf-card { 
+            width: 100%;
             border: 1px solid #999; 
-            margin-bottom: 12px; 
-            page-break-inside: avoid; /* Important for PDF pagination */
+            margin-bottom: 15px; 
+            page-break-inside: avoid; 
             border-radius: 4px;
+            box-sizing: border-box;
         }
-        .pdf-card-header { padding: 6px 10px; font-weight: bold; font-size: 10pt; border-bottom: 1px solid #999; }
+        .pdf-card-header { padding: 8px 12px; font-weight: bold; font-size: 11pt; border-bottom: 1px solid #999; }
         .pdf-card-header.match { background: #d4edda; color: #155724; }
         .pdf-card-header.fail { background: #f8d7da; color: #721c24; }
-        .pdf-card-body { padding: 8px 10px; }
+        .pdf-card-body { padding: 10px 12px; }
 
-        .pdf-comp-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 5px; }
-        .pdf-comp-table th { text-align: left; background: #eee; padding: 4px; border: 1px solid #999; font-size: 8pt; }
-        .pdf-comp-table td { padding: 4px; border: 1px solid #999; vertical-align: top; }
+        .pdf-comp-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 8px; }
+        .pdf-comp-table th { text-align: left; background: #eee; padding: 6px; border: 1px solid #999; }
+        .pdf-comp-table td { padding: 6px; border: 1px solid #999; vertical-align: top; }
         .pdf-cell-fail { background: #fff5f5; color: #b00; font-weight: bold; }
     </style>
 </head>
@@ -128,11 +145,11 @@
 
 <div id="loadingOverlay">
     <div style="font-size: 40px; margin-bottom: 15px;">⚙️</div>
-    <div id="loadingText" style="font-size: 20px; font-weight: bold; color:#333;">Generating PDF Report...</div>
+    <div id="loadingText" style="font-size: 20px; font-weight: bold; color:#333;">Processing...</div>
 </div>
 
 <div id="dashboardContainer">
-    <h1>Alert Inspector <small style="font-size:14px; opacity:0.8; margin-left:10px;">v6 PDF Fix</small></h1>
+    <h1>Alert Inspector <small style="font-size:14px; opacity:0.8; margin-left:10px;">v7 A4 Fix</small></h1>
 
     <main>
         <div class="editor-container">
@@ -158,7 +175,7 @@
     </main>
 </div>
 
-<div id="pdfWrapper" style="display:none;">
+<div id="pdfWrapper">
     <div id="pdfContainer">
         <div class="pdf-title">Suppression Analysis Report</div>
         <div class="pdf-meta" id="pdfDate"></div>
@@ -222,7 +239,6 @@
     }
 
     function executeAnalysis() {
-        // 1. Get Data
         const alertText = alertEditor.getValue().trim();
         try { globalAlertData = JSON.parse(alertText); } 
         catch (e) { globalAlertData = parseKeyValue(alertText); }
@@ -235,19 +251,14 @@
         const rules = extractRules(rawRules);
         const strict = document.getElementById('strictCaseCheck').checked;
 
-        // 2. Compare
         globalResults = rules.map(rule => ({
             meta: rule,
             result: compare(globalAlertData, rule, strict)
         }));
         
-        // Sort matches first
         globalResults.sort((a,b) => (a.result.isMatch === b.result.isMatch) ? 0 : a.result.isMatch ? -1 : 1);
 
-        // 3. Render Screen
         renderScreen();
-        
-        // 4. Pre-Render Hidden PDF DOM
         preparePDFDOM();
         
         document.getElementById('pdfBtn').style.display = 'block';
@@ -309,7 +320,6 @@
     function preparePDFDOM() {
         document.getElementById('pdfDate').innerText = "Report Date: " + new Date().toLocaleString();
 
-        // Fill Alert Table
         const table = document.getElementById('pdfAlertTable');
         table.innerHTML = '';
         const keyFields = ['hostname', 'ip', 'name', 'path', 'commandLine', 'parentProcessName', 'sha1'];
@@ -318,7 +328,6 @@
             if(val) table.innerHTML += `<tr><td class="pdf-label">${fieldMap[k] || k}</td><td>${escape(val)}</td></tr>`;
         });
 
-        // Stats
         const matches = globalResults.filter(r => r.result.isMatch).length;
         document.getElementById('pdfTotalRules').innerText = globalResults.length;
         const statusElem = document.getElementById('pdfStatus');
@@ -330,7 +339,6 @@
             statusElem.style.color = "red";
         }
 
-        // Fill Rules
         const list = document.getElementById('pdfRulesList');
         list.innerHTML = '';
 
@@ -376,36 +384,33 @@
         });
     }
 
-    // --- PDF DOWNLOAD (VIEW SWAP FIX) ---
+    // --- PDF DOWNLOAD ---
     function downloadPDF() {
-        // 1. Show Loading
         document.getElementById('loadingText').innerText = "Generating PDF...";
         document.getElementById('loadingOverlay').style.display = 'flex';
 
-        // 2. SWAP VIEWS: Hide Dashboard, Show PDF Wrapper
+        // Swap View: Hide Dashboard, Show PDF Wrapper Flexbox
         const dashboard = document.getElementById('dashboardContainer');
         const pdfWrapper = document.getElementById('pdfWrapper');
         const pdfElement = document.getElementById('pdfContainer');
 
         dashboard.style.display = 'none';
-        pdfWrapper.style.display = 'flex'; // Visible flex container
+        pdfWrapper.style.display = 'flex';
 
         const opt = {
             margin:       0,
             filename:     'Alert_Analysis_Report.pdf',
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, scrollY: 0, windowWidth: 1200 }, // windowWidth helps ensure layout
+            html2canvas:  { scale: 2, scrollY: 0, windowWidth: 1200 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // 3. Generate
         html2pdf().set(opt).from(pdfElement).save().then(() => {
-            // 4. Restore View
             pdfWrapper.style.display = 'none';
             dashboard.style.display = 'block';
             document.getElementById('loadingOverlay').style.display = 'none';
         }).catch(err => {
-            alert("Error generating PDF: " + err);
+            alert("Error: " + err);
             pdfWrapper.style.display = 'none';
             dashboard.style.display = 'block';
             document.getElementById('loadingOverlay').style.display = 'none';
